@@ -37,3 +37,15 @@ targets:
         ENABLE_HARDENED_RUNTIME: NO
         ENABLE_APP_SANDBOX: NO
         COMBINE_HIDPI_IMAGES: YES
+
+  NotchTuneTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: NotchTuneTests
+    dependencies:
+      - target: NotchTune
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ensarbaba.NotchTuneTests
+        GENERATE_INFOPLIST_FILE: YES
