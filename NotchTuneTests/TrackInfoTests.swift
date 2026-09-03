@@ -2,10 +2,6 @@
 //  TrackInfoTests.swift
 //  NotchTuneTests
 //
-//  Ad detection is the one decision the whole app rests on. A false negative
-//  means an ad plays at full volume; a false positive silences music the user
-//  wanted to hear.
-//
 
 import Testing
 @testable import NotchTune

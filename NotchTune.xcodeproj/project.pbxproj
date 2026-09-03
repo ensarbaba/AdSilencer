@@ -9,7 +9,10 @@
 /* Begin PBXBuildFile section */
 		390619892EDB73EE69E12B69 /* TrackInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356B8BD3F8262E13C5FBEB80 /* TrackInfoTests.swift */; };
 		3F4BDDAB7A379D335EB2ADD5 /* NotchTuneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D2F9C8D1A79D24D222CF94 /* NotchTuneApp.swift */; };
+		44C939F4D3B457BF03C9B282 /* SpotifyScripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44190405DF6749052B9F39E /* SpotifyScripting.swift */; };
 		49301AA7AC506CD83603376B /* TrackInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A7DDCDACF3F6E4A69911593 /* TrackInfo.swift */; };
+		86B13DDD5829AA0E6558B9FE /* ScriptingBridge.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D7615C5D8C649A6C9827F0AB /* ScriptingBridge.framework */; };
+		C0DF00A0EC6C1E75010A01CC /* SpotifyScriptingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 378FF56B47F255DA851057AC /* SpotifyScriptingTests.swift */; };
 		DA0E335D2ACDB2F7F436DEF6 /* TrackInfoFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = A266557410EE001926BC21CD /* TrackInfoFixtures.swift */; };
 /* End PBXBuildFile section */
 
@@ -26,17 +29,32 @@
 /* Begin PBXFileReference section */
 		2A7DDCDACF3F6E4A69911593 /* TrackInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfo.swift; sourceTree = "<group>"; };
 		356B8BD3F8262E13C5FBEB80 /* TrackInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfoTests.swift; sourceTree = "<group>"; };
+		378FF56B47F255DA851057AC /* SpotifyScriptingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyScriptingTests.swift; sourceTree = "<group>"; };
 		60578395FF185E9AC45EBA6D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		65D2F9C8D1A79D24D222CF94 /* NotchTuneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchTuneApp.swift; sourceTree = "<group>"; };
 		A266557410EE001926BC21CD /* TrackInfoFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfoFixtures.swift; sourceTree = "<group>"; };
 		D116564EBE27C33D61C3E77A /* NotchTune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotchTune.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D44190405DF6749052B9F39E /* SpotifyScripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyScripting.swift; sourceTree = "<group>"; };
+		D7615C5D8C649A6C9827F0AB /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
 		F176E724DB3232B329D6B37B /* NotchTuneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NotchTuneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		63FFF248CB10B671CD459378 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86B13DDD5829AA0E6558B9FE /* ScriptingBridge.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1E27AEB829A402D830ECDEBE /* Spotify */ = {
 			isa = PBXGroup;
 			children = (
+				D44190405DF6749052B9F39E /* SpotifyScripting.swift */,
 				2A7DDCDACF3F6E4A69911593 /* TrackInfo.swift */,
 			);
 			path = Spotify;
@@ -45,10 +63,19 @@
 		64EEF949B01C2FE942A76B1A /* NotchTuneTests */ = {
 			isa = PBXGroup;
 			children = (
+				378FF56B47F255DA851057AC /* SpotifyScriptingTests.swift */,
 				A266557410EE001926BC21CD /* TrackInfoFixtures.swift */,
 				356B8BD3F8262E13C5FBEB80 /* TrackInfoTests.swift */,
 			);
 			path = NotchTuneTests;
+			sourceTree = "<group>";
+		};
+		8627F6D57725C80CEF2F8704 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D7615C5D8C649A6C9827F0AB /* ScriptingBridge.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		9C08635D649B394FFF9DC2A4 /* NotchTune */ = {
@@ -66,6 +93,7 @@
 			children = (
 				9C08635D649B394FFF9DC2A4 /* NotchTune */,
 				64EEF949B01C2FE942A76B1A /* NotchTuneTests */,
+				8627F6D57725C80CEF2F8704 /* Frameworks */,
 				DA597DCCA1FB2C8F55CF50BF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -105,6 +133,7 @@
 			buildConfigurationList = 568B98CAE796C596C1902471 /* Build configuration list for PBXNativeTarget "NotchTune" */;
 			buildPhases = (
 				499C773A0922E0A040560367 /* Sources */,
+				63FFF248CB10B671CD459378 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -156,6 +185,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0DF00A0EC6C1E75010A01CC /* SpotifyScriptingTests.swift in Sources */,
 				DA0E335D2ACDB2F7F436DEF6 /* TrackInfoFixtures.swift in Sources */,
 				390619892EDB73EE69E12B69 /* TrackInfoTests.swift in Sources */,
 			);
@@ -166,6 +196,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3F4BDDAB7A379D335EB2ADD5 /* NotchTuneApp.swift in Sources */,
+				44C939F4D3B457BF03C9B282 /* SpotifyScripting.swift in Sources */,
 				49301AA7AC506CD83603376B /* TrackInfo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

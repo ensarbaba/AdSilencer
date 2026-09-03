@@ -8,9 +8,6 @@ options:
 
 settings:
   base:
-    # Swift 6 from the first commit. Adopting it now, while the app is a stub,
-    # keeps every later piece written clean; retrofitting it afterwards would be
-    # one large diff across every file.
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     MARKETING_VERSION: "1.0"
@@ -23,15 +20,16 @@ targets:
     platform: macOS
     sources:
       - path: NotchTune
+    dependencies:
+      - sdk: ScriptingBridge.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ensarbaba.NotchTune
         PRODUCT_NAME: NotchTune
         INFOPLIST_FILE: NotchTune/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        # Personal-use build: ad-hoc signed, no hardened runtime, no sandbox.
-        # The sandbox in particular must stay off: sandboxed processes receive
-        # com.spotify.client.PlaybackStateChanged with a stripped userInfo.
+        # Personal build. Ad-hoc signed.
+        # Sandbox must stay off, or Spotify's notifications arrive empty.
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
         ENABLE_HARDENED_RUNTIME: NO

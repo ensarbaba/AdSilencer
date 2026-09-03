@@ -2,9 +2,9 @@
 //  TrackInfoFixtures.swift
 //  NotchTuneTests
 //
-//  Shared sample tracks, so tests read as assertions rather than as
-//  construction boilerplate.
+//  Sample tracks for tests.
 //
+
 
 import Foundation
 @testable import NotchTune
