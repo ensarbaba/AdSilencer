@@ -74,13 +74,15 @@ final class SpotifyBridge: SpotifyControlling {
     var access: SpotifyAccess {
         guard isRunning else { return .unavailable }
 
+        // Names Spotify by its bundle id, the way Apple events address an app.
         var target = AEAddressDesc()
         let bundleBytes = Array(Self.bundleID.utf8)
         guard AECreateDesc(typeApplicationBundleID, bundleBytes, bundleBytes.count, &target) == noErr
         else { return .unavailable }
         defer { AEDisposeDesc(&target) }
 
-        // false: report that consent is needed rather than prompting here.
+        // Asks the system whether we may control Spotify. Sends nothing.
+        // false means report that consent is needed instead of prompting now.
         switch AEDeterminePermissionToAutomateTarget(&target, typeWildCard, typeWildCard, false) {
         case noErr: return .ok
         case OSStatus(errAEEventWouldRequireUserConsent): return .undetermined

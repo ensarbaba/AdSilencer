@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		10550E450F0BE18372AEC464 /* SpotifyBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69CCF4D48A7D113387F6B09B /* SpotifyBridgeTests.swift */; };
+		1D7EC116AC54E3E2F144BB7D /* SpotifyAdStateFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE0A942C1B5C5F968814880E /* SpotifyAdStateFileTests.swift */; };
+		250086E046ACE9FCA345C212 /* SpotifyAdStateFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D092CBB372EFD6FC20BD69 /* SpotifyAdStateFile.swift */; };
 		390619892EDB73EE69E12B69 /* TrackInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356B8BD3F8262E13C5FBEB80 /* TrackInfoTests.swift */; };
 		3F4BDDAB7A379D335EB2ADD5 /* NotchTuneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D2F9C8D1A79D24D222CF94 /* NotchTuneApp.swift */; };
 		419153B2F210A7B3DD11ADAB /* FakeSpotify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6681B1BAD103C75742BA07F1 /* FakeSpotify.swift */; };
@@ -38,7 +40,9 @@
 		6681B1BAD103C75742BA07F1 /* FakeSpotify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeSpotify.swift; sourceTree = "<group>"; };
 		66C7B20ADE8F494576A9A29D /* SpotifyBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyBridge.swift; sourceTree = "<group>"; };
 		69CCF4D48A7D113387F6B09B /* SpotifyBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyBridgeTests.swift; sourceTree = "<group>"; };
+		72D092CBB372EFD6FC20BD69 /* SpotifyAdStateFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyAdStateFile.swift; sourceTree = "<group>"; };
 		A266557410EE001926BC21CD /* TrackInfoFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfoFixtures.swift; sourceTree = "<group>"; };
+		BE0A942C1B5C5F968814880E /* SpotifyAdStateFileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyAdStateFileTests.swift; sourceTree = "<group>"; };
 		D116564EBE27C33D61C3E77A /* NotchTune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotchTune.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D44190405DF6749052B9F39E /* SpotifyScripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyScripting.swift; sourceTree = "<group>"; };
 		D7615C5D8C649A6C9827F0AB /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
@@ -60,6 +64,7 @@
 		1E27AEB829A402D830ECDEBE /* Spotify */ = {
 			isa = PBXGroup;
 			children = (
+				72D092CBB372EFD6FC20BD69 /* SpotifyAdStateFile.swift */,
 				66C7B20ADE8F494576A9A29D /* SpotifyBridge.swift */,
 				D44190405DF6749052B9F39E /* SpotifyScripting.swift */,
 				2A7DDCDACF3F6E4A69911593 /* TrackInfo.swift */,
@@ -71,6 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				6681B1BAD103C75742BA07F1 /* FakeSpotify.swift */,
+				BE0A942C1B5C5F968814880E /* SpotifyAdStateFileTests.swift */,
 				69CCF4D48A7D113387F6B09B /* SpotifyBridgeTests.swift */,
 				378FF56B47F255DA851057AC /* SpotifyScriptingTests.swift */,
 				A266557410EE001926BC21CD /* TrackInfoFixtures.swift */,
@@ -195,6 +201,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				419153B2F210A7B3DD11ADAB /* FakeSpotify.swift in Sources */,
+				1D7EC116AC54E3E2F144BB7D /* SpotifyAdStateFileTests.swift in Sources */,
 				10550E450F0BE18372AEC464 /* SpotifyBridgeTests.swift in Sources */,
 				C0DF00A0EC6C1E75010A01CC /* SpotifyScriptingTests.swift in Sources */,
 				DA0E335D2ACDB2F7F436DEF6 /* TrackInfoFixtures.swift in Sources */,
@@ -207,6 +214,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3F4BDDAB7A379D335EB2ADD5 /* NotchTuneApp.swift in Sources */,
+				250086E046ACE9FCA345C212 /* SpotifyAdStateFile.swift in Sources */,
 				44492B37402592A16E7BF1C6 /* SpotifyBridge.swift in Sources */,
 				44C939F4D3B457BF03C9B282 /* SpotifyScripting.swift in Sources */,
 				49301AA7AC506CD83603376B /* TrackInfo.swift in Sources */,
