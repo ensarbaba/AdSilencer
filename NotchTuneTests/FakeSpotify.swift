@@ -48,8 +48,9 @@ final class FakeSpotify: SpotifyControlling {
     /// Every value written to the volume, in order.
     var volumeWrites: [Int] { state.withLock { $0.volumeWrites } }
 
-    /// Copies a real Spotify behaviour: writing any volume from 1 to 99 reads
-    /// back one step lower. Off by default.
+    /// Copies real Spotify: a written volume reads back one step lower unless
+    /// it is a multiple of 20. Measured across every value from 0 to 100.
+    /// Off by default.
     var emulatesReadbackDrift: Bool {
         get { state.withLock { $0.emulatesReadbackDrift } }
         set { state.withLock { $0.emulatesReadbackDrift = newValue } }
@@ -58,8 +59,8 @@ final class FakeSpotify: SpotifyControlling {
     var soundVolume: Int {
         get {
             state.withLock { s in
-                guard s.emulatesReadbackDrift, s.volume > 0, s.volume < 100 else { return s.volume }
-                return s.volume - 1
+                guard s.emulatesReadbackDrift else { return s.volume }
+                return s.volume % 20 == 0 ? s.volume : s.volume - 1
             }
         }
         set {

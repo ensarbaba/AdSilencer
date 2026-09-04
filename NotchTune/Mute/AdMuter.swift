@@ -100,9 +100,20 @@ final class AdMuter: Sendable {
     }
 
     private func putBack(_ s: inout State) {
-        if let saved = s.saved, saved > 0 {
-            spotify.soundVolume = saved
+        defer { s.saved = nil }
+        guard let saved = s.saved, saved > 0 else { return }
+
+        spotify.soundVolume = saved
+
+        // Spotify reports a written volume one step lower unless it is a
+        // multiple of 20. Writing the saved number straight back would lose a
+        // step on every ad and walk the volume down to nothing.
+        //
+        // One step up lands on the saved value for all but 19, 39, 59, 79 and
+        // 99, which Spotify cannot report at all. Those land one step high and
+        // then stay put, so the volume never drifts either way.
+        if spotify.soundVolume != saved {
+            spotify.soundVolume = min(saved + 1, 100)
         }
-        s.saved = nil
     }
 }

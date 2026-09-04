@@ -113,6 +113,62 @@ struct AdMuterTests {
         #expect(fake.soundVolume == 75)
     }
 
+    @Test("Many ads do not walk the volume down")
+    func volumeDoesNotDrift() {
+        // Spotify reports a written volume one step low. Without correction the
+        // saved value shrinks on every ad and the volume decays toward zero.
+        let fake = FakeSpotify()
+        fake.emulatesReadbackDrift = true
+        fake.userSetsVolume(80)
+
+        let muter = AdMuter(spotify: fake)
+        let start = fake.soundVolume
+
+        for _ in 0..<25 {
+            muter.apply(adPlaying: true)
+            #expect(fake.soundVolume == 0)
+            muter.apply(adPlaying: false)
+            #expect(fake.soundVolume == start)
+        }
+    }
+
+    @Test("A volume of 100 is not pushed past the maximum")
+    func fullVolumeStaysInRange() {
+        let fake = FakeSpotify()
+        fake.emulatesReadbackDrift = true
+        fake.userSetsVolume(100)
+
+        let muter = AdMuter(spotify: fake)
+        muter.apply(adPlaying: true)
+        muter.apply(adPlaying: false)
+
+        #expect(fake.volumeWrites.allSatisfy { $0 <= 100 })
+    }
+
+    @Test("No volume drifts over many ads, at any starting level")
+    func noDriftAtAnyLevel() {
+        // Spotify cannot report 19, 39, 59, 79 or 99. Those settle one step
+        // higher on the first ad and then hold, which is the point: the volume
+        // must never keep moving.
+        for start in 1...100 {
+            let fake = FakeSpotify()
+            fake.emulatesReadbackDrift = true
+            fake.userSetsVolume(start)
+
+            let muter = AdMuter(spotify: fake)
+            muter.apply(adPlaying: true)
+            muter.apply(adPlaying: false)
+            let settled = fake.soundVolume
+
+            for _ in 0..<10 {
+                muter.apply(adPlaying: true)
+                #expect(fake.soundVolume == 0)
+                muter.apply(adPlaying: false)
+                #expect(fake.soundVolume == settled, "drifted from a start of \(start)")
+            }
+        }
+    }
+
     @Test("Each ad reports once, however many reads it spans")
     func reportsOncePerAd() {
         let fake = FakeSpotify()
