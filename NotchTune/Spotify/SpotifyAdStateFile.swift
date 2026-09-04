@@ -2,19 +2,13 @@
 //  SpotifyAdStateFile.swift
 //  NotchTune
 //
-//  Watches the file Spotify rewrites when its ad state changes:
+//  Watches ad-state-storage.bnk, which Spotify rewrites on ad changes. The
+//  playback notification misses ad boundaries; this file does not.
 //
-//      ~/Library/Application Support/Spotify/Users/<account>-user/ad-state-storage.bnk
+//  Spotify replaces the file instead of writing into it, so deletes and
+//  renames count as changes and the watch reopens the new file.
 //
-//  Spotify's playback notification covers play, pause and seek, and is
-//  coalesced, so it does not fire at every ad boundary. This file does.
-//
-//  Spotify saves the file by replacing it, not by writing into it. Watching
-//  only for writes therefore reports nothing. Confirmed on the real file: the
-//  first event was a delete. So deletes and renames are watched too, and the
-//  watch reopens the replacement.
-//
-//  The account folder name changes per login, so it is searched for.
+//  The account folder name varies per login, so it is searched for.
 //
 
 import Foundation
