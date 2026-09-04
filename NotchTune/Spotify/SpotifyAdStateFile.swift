@@ -9,6 +9,11 @@
 //  Spotify's playback notification covers play, pause and seek, and is
 //  coalesced, so it does not fire at every ad boundary. This file does.
 //
+//  Spotify saves the file by replacing it, not by writing into it. Watching
+//  only for writes therefore reports nothing. Confirmed on the real file: the
+//  first event was a delete. So deletes and renames are watched too, and the
+//  watch reopens the replacement.
+//
 //  The account folder name changes per login, so it is searched for.
 //
 
@@ -20,7 +25,22 @@ final class SpotifyAdStateFile: Sendable {
 
     private struct State {
         var source: DispatchSourceFileSystemObject?
+        var watchedURL: URL?
+        /// False after `stop()`, so a pending reopen gives up.
+        var isRunning = false
     }
+
+    /// Events meaning the file was replaced rather than edited.
+    ///
+    /// Computed rather than stored: `FileSystemEvent` is not `Sendable`, so a
+    /// stored global would need an unsafe opt-out.
+    private static var replacedEvents: DispatchSource.FileSystemEvent {
+        [.delete, .rename, .revoke]
+    }
+
+    /// How long to wait before looking for the replacement file.
+    private static let reopenDelay: TimeInterval = 0.1
+    private static let reopenAttempts = 10
 
     private let queue: DispatchQueue
     private let onChange: @Sendable () -> Void
@@ -82,14 +102,30 @@ final class SpotifyAdStateFile: Sendable {
         // Asks the kernel to report changes to this file.
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: descriptor,
-            eventMask: [.write, .extend], // file written to, or grown
+            // written to, grown, deleted, renamed, or the volume went away
+            eventMask: [.write, .extend, .delete, .rename, .revoke],
             queue: queue
         )
-        source.setEventHandler { [onChange] in onChange() }
+        // weak source: the source owns this handler, so a strong capture would
+        // keep them both alive forever.
+        source.setEventHandler { [weak self, weak source] in
+            guard let self, let source else { return }
+            let events = source.data
+            self.onChange()
+
+            // The file this descriptor points at is gone. Open the new one.
+            if !events.isDisjoint(with: Self.replacedEvents) {
+                self.reopen(url)
+            }
+        }
         // Closes the file when the watch ends.
         source.setCancelHandler { close(descriptor) }
 
-        state.withLock { $0.source = source }
+        state.withLock {
+            $0.source = source
+            $0.watchedURL = url
+            $0.isRunning = true
+        }
         source.resume()
         return true
     }
@@ -98,9 +134,24 @@ final class SpotifyAdStateFile: Sendable {
         // Takes the source out and clears it together, then cancels outside
         // the lock so the cancel handler cannot block on it.
         let source = state.withLock { state -> DispatchSourceFileSystemObject? in
-            defer { state.source = nil }
+            defer {
+                state.source = nil
+                state.isRunning = false
+            }
             return state.source
         }
         source?.cancel()
+    }
+
+    /// Reopens the replacement file. It may not exist for a moment after the
+    /// old one is removed, so this retries briefly before giving up.
+    private func reopen(_ url: URL, attempt: Int = 0) {
+        guard state.withLock({ $0.isRunning }) else { return }
+        guard attempt < Self.reopenAttempts else { return }
+        if start(watching: url) { return }
+
+        queue.asyncAfter(deadline: .now() + Self.reopenDelay) { [weak self] in
+            self?.reopen(url, attempt: attempt + 1)
+        }
     }
 }

@@ -55,6 +55,32 @@ struct SpotifyAdStateFileTests {
         #expect(await counter.wait(for: 1))
     }
 
+    @Test("The watch survives the file being replaced")
+    func survivesAtomicReplace() async throws {
+        // Spotify replaces this file rather than writing into it, which swaps
+        // the inode. A watch that only handled writes would go deaf here.
+        let (dir, file) = try makeScratchFile()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let counter = Counter()
+        let watcher = SpotifyAdStateFile(queue: DispatchQueue(label: "test.replace")) {
+            counter.increment()
+        }
+        #expect(watcher.start(watching: file))
+        defer { watcher.stop() }
+
+        try await Task.sleep(for: .milliseconds(100))
+        try Data("first".utf8).write(to: file, options: .atomic)
+        #expect(await counter.wait(for: 1))
+
+        // Give the reopen time to attach to the replacement.
+        try await Task.sleep(for: .milliseconds(400))
+        let before = counter.count
+
+        try Data("second".utf8).write(to: file, options: .atomic)
+        #expect(await counter.wait(for: before + 1))
+    }
+
     @Test("Stopping ends the reports")
     func stopEndsNotifications() async throws {
         let (dir, file) = try makeScratchFile()
