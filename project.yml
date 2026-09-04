@@ -3,7 +3,7 @@ name: NotchTune
 options:
   bundleIdPrefix: com.ensarbaba
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "15.0"
   createIntermediateGroups: true
 
 settings:
