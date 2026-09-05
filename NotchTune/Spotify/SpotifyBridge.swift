@@ -34,14 +34,13 @@ enum SpotifyAccess: Equatable {
     case denied
     /// Spotify is not installed or not running.
     case unavailable
-
-    var isUsable: Bool { self == .ok || self == .undetermined }
 }
 
 protocol SpotifyControlling: AnyObject, Sendable {
     var isRunning: Bool { get }
     var access: SpotifyAccess { get }
     var playerState: SpotifyPlayerState { get }
+    /// A negative reading means Spotify could not report its volume.
     var soundVolume: Int { get set }
 
     func currentTrack() -> TrackInfo?
@@ -49,11 +48,7 @@ protocol SpotifyControlling: AnyObject, Sendable {
 
 /// Holds no state, so it is safe to share across queues without a lock.
 ///
-/// The `SBApplication` is built per call rather than cached. Caching it would
-/// mean shared mutable state, which Swift cannot check for thread safety, and
-/// the only way to keep it would be an unchecked promise. Building one costs
-/// about 5.6 ms against roughly 33 ms for a single property read, and this app
-/// reads only when Spotify signals a change.
+/// Each call owns its ScriptingBridge application and error state.
 final class SpotifyBridge: SpotifyControlling {
 
     static let bundleID = "com.spotify.client"
@@ -107,7 +102,13 @@ final class SpotifyBridge: SpotifyControlling {
     }
 
     var soundVolume: Int {
-        get { makeApp()?.soundVolume ?? 0 }
+        get {
+            guard let app = makeApp() as? SBApplication else { return -1 }
+            let errors = SpotifyEventErrors()
+            app.delegate = errors
+            let volume = (app as SpotifyScriptingApplication).soundVolume
+            return errors.failed ? -1 : (volume ?? -1)
+        }
         set { makeApp()?.setSoundVolume?(max(0, min(100, newValue))) }
     }
 
@@ -125,5 +126,15 @@ final class SpotifyBridge: SpotifyControlling {
             album: track.album ?? "",
             durationMS: track.duration ?? 0
         )
+    }
+}
+
+/// Captures errors for one synchronous Apple event read.
+private final class SpotifyEventErrors: NSObject, SBApplicationDelegate {
+    var failed = false
+
+    func eventDidFail(_ event: UnsafePointer<AppleEvent>, withError error: Error) -> Any? {
+        failed = true
+        return nil
     }
 }

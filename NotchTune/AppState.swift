@@ -40,6 +40,8 @@ final class AppState {
         didSet {
             defaults.set(isOn, forKey: Keys.on)
             muter.isOn = isOn
+            isMuting = muter.isMuting
+            watcher?.refresh()
         }
     }
 
@@ -78,7 +80,7 @@ final class AppState {
 
         let watcher = SpotifyWatcher(spotify: spotify) { [weak self] snapshot in
             // Watcher queue. Mute first, publish after.
-            muter.apply(adPlaying: snapshot.isAdPlaying)
+            muter.apply(adPlaying: snapshot.isAdPlaying, countAd: !snapshot.isSimulated)
             let muting = muter.isMuting
             let count = counter.count
 
@@ -104,7 +106,7 @@ final class AppState {
 
     private func publish(_ snapshot: PlaybackSnapshot, muting: Bool, count: Int) {
         self.snapshot = snapshot
-        self.isMuting = muting
+        self.isMuting = isOn && muting
         if count != adsMuted {
             adsMuted = count
             defaults.set(count, forKey: Keys.count)

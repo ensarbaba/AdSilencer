@@ -2,13 +2,13 @@
 //  SpotifyWatcher.swift
 //  NotchTune
 //
-//  Reports what Spotify is playing. Event driven, nothing polls.
+//  Reports playback by reading Spotify once a second.
 //
-//  Two signals mean "look now": Spotify's playback notification, and the ad
-//  file changing. Values always come from the bridge, never from the signal.
-//  Reads are delayed and merged, since both usually fire for one change.
-//
-//  Needs the app to be unsandboxed to receive the notification.
+//  Event-driven detection was tried and removed. Spotify's
+//  PlaybackStateChanged notification never fired, measured across two minutes
+//  of playback. The ad state file did fire, but up to 6.7 seconds before
+//  `current track` caught up, and again roughly every 100 seconds with nothing
+//  changed. Neither could tell the app when an ad began.
 //
 
 import Foundation
@@ -20,6 +20,7 @@ struct PlaybackSnapshot: Equatable, Sendable {
     let access: SpotifyAccess
     let state: SpotifyPlayerState
     let track: TrackInfo?
+    var isSimulated = false
 
     static let idle = PlaybackSnapshot(
         isRunning: false, access: .unavailable, state: .stopped, track: nil
@@ -33,34 +34,23 @@ struct PlaybackSnapshot: Equatable, Sendable {
 
 final class SpotifyWatcher: Sendable {
 
-    static let spotifyChannel = Notification.Name("com.spotify.client.PlaybackStateChanged")
-
-    private static let delay: TimeInterval = 0.1
+    /// Worst case delay before an ad is noticed.
+    static let interval: TimeInterval = 1
 
     private struct State {
-        var adFile: SpotifyAdStateFile?
-        /// Async sequence, because the block observer's token is not Sendable.
-        var notifyTask: Task<Void, Never>?
-        /// Only the newest scheduled read runs.
-        var reads = 0
+        var timer: DispatchSourceTimer?
+        var running = false
         var fakeTrack: TrackInfo?
     }
 
     /// All Spotify reads happen here, so a slow reply cannot block the UI.
     private let queue = DispatchQueue(label: "com.ensarbaba.NotchTune.spotify")
     private let spotify: SpotifyControlling
-    private let channel: Notification.Name
     private let onSnapshot: @Sendable (PlaybackSnapshot) -> Void
     private let state = Mutex(State())
 
-    /// `channel` is injectable so tests do not share Spotify's real one.
-    init(
-        spotify: SpotifyControlling,
-        channel: Notification.Name = SpotifyWatcher.spotifyChannel,
-        onSnapshot: @escaping @Sendable (PlaybackSnapshot) -> Void
-    ) {
+    init(spotify: SpotifyControlling, onSnapshot: @escaping @Sendable (PlaybackSnapshot) -> Void) {
         self.spotify = spotify
-        self.channel = channel
         self.onSnapshot = onSnapshot
     }
 
@@ -68,43 +58,38 @@ final class SpotifyWatcher: Sendable {
         stop()
     }
 
-    /// False means the ad file was not found, so only the notification is live.
-    @discardableResult
-    func start() -> Bool {
-        let notes = DistributedNotificationCenter.default().notifications(named: channel)
-        let task = Task { [weak self] in
-            for await _ in notes {
-                if Task.isCancelled { return }
-                self?.scheduleRead()
-            }
-        }
+    func start() {
+        stop()
+        state.withLock { $0.running = true }
 
-        let file = SpotifyAdStateFile(queue: queue) { [weak self] in
-            self?.scheduleRead()
-        }
-        let watching = file.start()
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(
+            deadline: .now() + Self.interval,
+            repeating: Self.interval,
+            leeway: .milliseconds(100)
+        )
+        timer.setEventHandler { [weak self] in self?.read() }
 
-        state.withLock {
-            $0.notifyTask = task
-            $0.adFile = file
-        }
-
-        queue.async { [weak self] in self?.read() }
-        return watching
+        state.withLock { $0.timer = timer }
+        timer.resume()
+        refresh()
     }
 
     func stop() {
-        let (task, file) = state.withLock { state in
+        let timer = state.withLock { state -> DispatchSourceTimer? in
             defer {
-                state.notifyTask = nil
-                state.adFile = nil
-                // Drops any read already waiting.
-                state.reads += 1
+                state.running = false
+                state.fakeTrack = nil
+                state.timer = nil
             }
-            return (state.notifyTask, state.adFile)
+            return state.timer
         }
-        task?.cancel()
-        file?.stop()
+        timer?.cancel()
+    }
+
+    /// Reads now rather than waiting for the next tick.
+    func refresh() {
+        queue.async { [weak self] in self?.read() }
     }
 
     /// Pretends an ad is playing, so muting can be checked on demand.
@@ -121,28 +106,17 @@ final class SpotifyWatcher: Sendable {
         }
     }
 
-    /// Merges a burst of signals into one read.
-    private func scheduleRead() {
-        let mine = state.withLock { state -> Int in
-            state.reads += 1
-            return state.reads
-        }
-        queue.asyncAfter(deadline: .now() + Self.delay) { [weak self] in
-            guard let self else { return }
-            // A newer signal arrived, or stop() ran.
-            guard self.state.withLock({ $0.reads }) == mine else { return }
-            self.read()
-        }
-    }
-
     /// Runs on `queue`.
     private func read() {
+        guard state.withLock({ $0.running }) else { return }
         onSnapshot(snapshot())
     }
 
     private func snapshot() -> PlaybackSnapshot {
         if let fake = state.withLock({ $0.fakeTrack }) {
-            return PlaybackSnapshot(isRunning: true, access: .ok, state: .playing, track: fake)
+            return PlaybackSnapshot(
+                isRunning: true, access: .ok, state: .playing, track: fake, isSimulated: true
+            )
         }
         guard spotify.isRunning else { return .idle }
         return PlaybackSnapshot(

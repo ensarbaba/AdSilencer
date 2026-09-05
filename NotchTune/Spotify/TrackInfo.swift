@@ -30,13 +30,6 @@ struct TrackInfo: Equatable {
         if isAd { return "Advertisement" }
         return name.isEmpty ? "Unknown Track" : name
     }
-
-    /// Second menu line, or nil when no fields are populated.
-    var displaySubtitle: String? {
-        if isAd { return "Muted by NotchTune" }
-        let parts = [artist, album].filter { !$0.isEmpty }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
 }
 
 extension TrackInfo {

@@ -26,14 +26,6 @@ struct SpotifyPlayerStateTests {
 
 struct SpotifyAccessTests {
 
-    @Test("Only denied and unavailable block use")
-    func usability() {
-        #expect(SpotifyAccess.ok.isUsable)
-        #expect(SpotifyAccess.undetermined.isUsable)
-        #expect(SpotifyAccess.denied.isUsable == false)
-        #expect(SpotifyAccess.unavailable.isUsable == false)
-    }
-
     @Test("Access reports a definite answer on this machine")
     func liveAccessCheck() {
         // Reading access sends no Apple event and shows no prompt.

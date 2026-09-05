@@ -16,6 +16,47 @@ struct AdMuterTests {
         return (AdMuter(spotify: fake), fake)
     }
 
+    @Test("An unconfirmed mute still restores when the ad ends")
+    func unconfirmedMuteRestores() {
+        let fake = FakeSpotify()
+        fake.failsReadback = true
+        let muter = AdMuter(spotify: fake)
+        muter.apply(adPlaying: true)
+        #expect(!muter.isMuting)
+        fake.failsReadback = false
+        muter.apply(adPlaying: false)
+        #expect(fake.soundVolume == 70)
+    }
+
+    @Test("An unreadable volume does not discard the saved volume")
+    func failedReadDuringMute() {
+        let fake = FakeSpotify()
+        let muter = AdMuter(spotify: fake)
+        muter.apply(adPlaying: true)
+        fake.userSetsVolume(-1)
+        muter.apply(adPlaying: true)
+        #expect(muter.isMuting)
+        fake.userSetsVolume(0)
+        muter.apply(adPlaying: false)
+        #expect(fake.soundVolume == 70)
+    }
+
+    @Test("Rejected mute writes are not reported as successful and can retry")
+    func rejectedMute() {
+        let fake = FakeSpotify()
+        fake.rejectsWrites = true
+        let count = Mutex(0)
+        let muter = AdMuter(spotify: fake) { count.withLock { $0 += 1 } }
+        muter.apply(adPlaying: true)
+        #expect(!muter.isMuting)
+        #expect(count.withLock { $0 } == 0)
+        fake.rejectsWrites = false
+        muter.apply(adPlaying: true)
+        #expect(muter.isMuting)
+        #expect(fake.soundVolume == 0)
+        #expect(count.withLock { $0 } == 1)
+    }
+
     @Test("An ad mutes, ending it restores")
     func muteThenRestore() {
         let (muter, fake) = make(volume: 70)
@@ -183,5 +224,48 @@ struct AdMuterTests {
         muter.apply(adPlaying: false)
         muter.apply(adPlaying: true)
         #expect(count.withLock { $0 } == 2)
+    }
+}
+
+struct AdMuterRestoreRetryTests {
+
+    @Test("A restore that does not take is retried, not abandoned")
+    func failedRestoreRetries() {
+        // Seen live: the ad ended, the restore write was rejected, the saved
+        // volume was thrown away, and Spotify stayed silent for over a minute.
+        let fake = FakeSpotify()
+        fake.userSetsVolume(17)
+        let muter = AdMuter(spotify: fake)
+
+        muter.apply(adPlaying: true)
+        #expect(fake.soundVolume == 0)
+
+        fake.rejectsWrites = true
+        muter.apply(adPlaying: false)
+        #expect(fake.soundVolume == 0)
+
+        // Writes work again, and the next read puts the volume back.
+        fake.rejectsWrites = false
+        muter.apply(adPlaying: false)
+        #expect(fake.soundVolume == 17)
+    }
+
+    @Test("A new ad after a failed restore does not save the muted zero")
+    func adAfterFailedRestoreKeepsRealVolume() {
+        let fake = FakeSpotify()
+        fake.userSetsVolume(30)
+        let muter = AdMuter(spotify: fake)
+
+        muter.apply(adPlaying: true)
+        fake.rejectsWrites = true
+        muter.apply(adPlaying: false)
+        #expect(fake.soundVolume == 0)
+
+        // Another ad arrives while still stuck silent. The saved volume must
+        // survive, otherwise zero becomes the value restored forever.
+        muter.apply(adPlaying: true)
+        fake.rejectsWrites = false
+        muter.apply(adPlaying: false)
+        #expect(fake.soundVolume == 30)
     }
 }

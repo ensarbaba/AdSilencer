@@ -37,11 +37,6 @@ private final class Recorder: Sendable {
     }
 }
 
-/// A channel nothing else posts on.
-private func testChannel() -> Notification.Name {
-    Notification.Name("com.ensarbaba.NotchTune.test.\(UUID().uuidString)")
-}
-
 struct PlaybackSnapshotTests {
 
     @Test("An ad counts as playing while paused")
@@ -71,12 +66,8 @@ struct PlaybackSnapshotTests {
 
 struct SpotifyWatcherTests {
 
-    private func makeWatcher(
-        _ fake: FakeSpotify,
-        _ channel: Notification.Name,
-        _ recorder: Recorder
-    ) -> SpotifyWatcher {
-        SpotifyWatcher(spotify: fake, channel: channel) { recorder.record($0) }
+    private func makeWatcher(_ fake: FakeSpotify, _ recorder: Recorder) -> SpotifyWatcher {
+        SpotifyWatcher(spotify: fake) { recorder.record($0) }
     }
 
     @Test("Starting reports current state")
@@ -84,7 +75,7 @@ struct SpotifyWatcherTests {
         let fake = FakeSpotify()
         fake.track = .song()
         let recorder = Recorder()
-        let watcher = makeWatcher(fake, testChannel(), recorder)
+        let watcher = makeWatcher(fake, recorder)
         defer { watcher.stop() }
 
         watcher.start()
@@ -97,7 +88,7 @@ struct SpotifyWatcherTests {
         let fake = FakeSpotify()
         fake.track = .song()
         let recorder = Recorder()
-        let watcher = makeWatcher(fake, testChannel(), recorder)
+        let watcher = makeWatcher(fake, recorder)
         defer { watcher.stop() }
 
         watcher.start()
@@ -105,7 +96,8 @@ struct SpotifyWatcherTests {
 
         watcher.simulateAd(for: 0.4)
         #expect(await recorder.waitFor { $0.isAdPlaying })
-        #expect(await recorder.waitFor { $0.track == TrackInfo.song() && !$0.isAdPlaying })
+        fake.track = .song(id: "spotify:track:after", name: "After")
+        #expect(await recorder.waitFor { $0.track?.name == "After" && !$0.isAdPlaying })
     }
 
     @Test("A fake ad ignores what Spotify says")
@@ -115,7 +107,7 @@ struct SpotifyWatcherTests {
         fake.playerState = .stopped
         fake.track = nil
         let recorder = Recorder()
-        let watcher = makeWatcher(fake, testChannel(), recorder)
+        let watcher = makeWatcher(fake, recorder)
         defer { watcher.stop() }
 
         watcher.start()
@@ -125,32 +117,12 @@ struct SpotifyWatcherTests {
         #expect(await recorder.waitFor { $0.isAdPlaying })
     }
 
-    @Test("A notification causes a read")
-    func notificationReads() async {
-        let channel = testChannel()
-        let fake = FakeSpotify()
-        fake.track = .song()
-        let recorder = Recorder()
-        let watcher = makeWatcher(fake, channel, recorder)
-        defer { watcher.stop() }
-
-        watcher.start()
-        #expect(await recorder.waitCount(1))
-
-        fake.track = .song(id: "spotify:track:second", name: "Second")
-        DistributedNotificationCenter.default()
-            .postNotificationName(channel, object: nil, deliverImmediately: true)
-
-        #expect(await recorder.waitFor { $0.track?.name == "Second" })
-    }
-
     @Test("Stopping ends reads")
     func stopEndsReads() async throws {
-        let channel = testChannel()
         let fake = FakeSpotify()
         fake.track = .song()
         let recorder = Recorder()
-        let watcher = makeWatcher(fake, channel, recorder)
+        let watcher = makeWatcher(fake, recorder)
 
         watcher.start()
         #expect(await recorder.waitCount(1))
@@ -158,36 +130,33 @@ struct SpotifyWatcherTests {
         watcher.stop()
         let after = recorder.count
 
-        DistributedNotificationCenter.default()
-            .postNotificationName(channel, object: nil, deliverImmediately: true)
-        try await Task.sleep(for: .milliseconds(500))
+        // Long enough for several timer ticks, none of which may report.
+        try await Task.sleep(for: .milliseconds(2500))
 
         #expect(recorder.count == after)
     }
 }
 
-struct SpotifyWatcherLiveTests {
+struct SpotifyWatcherPollingTests {
 
-    @Test("Spotify's own channel causes a read")
-    func liveChannelReads() async throws {
-        let bridge = SpotifyBridge()
-        try #require(bridge.isRunning, "Spotify must be running")
-        try #require(bridge.access == .ok, "Automation permission required")
-
+    @Test("A change made with no signal is still noticed")
+    func pollingNoticesChanges() async {
+        // Nothing tells the watcher anything. Spotify's notification never
+        // fires and the ad file lags, so the timer is the only thing that can
+        // catch an ad starting.
+        let fake = FakeSpotify()
+        fake.track = .song()
         let recorder = Recorder()
-        // Spotify's real channel on purpose: this is the wiring under test.
-        let watcher = SpotifyWatcher(spotify: bridge) { recorder.record($0) }
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
         defer { watcher.stop() }
 
         watcher.start()
         #expect(await recorder.waitCount(1))
 
-        let before = recorder.count
-        DistributedNotificationCenter.default().postNotificationName(
-            SpotifyWatcher.spotifyChannel, object: nil, deliverImmediately: true
-        )
+        fake.track = .ad()
+        #expect(await recorder.waitFor(5) { $0.isAdPlaying })
 
-        #expect(await recorder.waitCount(before + 1))
-        #expect(recorder.all.last?.isRunning == true)
+        fake.track = .song(id: "spotify:track:back", name: "Back")
+        #expect(await recorder.waitFor(5) { $0.track?.name == "Back" && !$0.isAdPlaying })
     }
 }

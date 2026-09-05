@@ -21,6 +21,8 @@ final class FakeSpotify: SpotifyControlling {
         var volume = 70
         var volumeWrites: [Int] = []
         var emulatesReadbackDrift = false
+        var rejectsWrites = false
+        var failsReadback = false
     }
 
     private let state = Mutex(State())
@@ -56,16 +58,27 @@ final class FakeSpotify: SpotifyControlling {
         set { state.withLock { $0.emulatesReadbackDrift = newValue } }
     }
 
+    var failsReadback: Bool {
+        get { state.withLock { $0.failsReadback } }
+        set { state.withLock { $0.failsReadback = newValue } }
+    }
+
+    var rejectsWrites: Bool {
+        get { state.withLock { $0.rejectsWrites } }
+        set { state.withLock { $0.rejectsWrites = newValue } }
+    }
+
     var soundVolume: Int {
         get {
             state.withLock { s in
+                if s.failsReadback && !s.volumeWrites.isEmpty { return -1 }
                 guard s.emulatesReadbackDrift else { return s.volume }
                 return s.volume % 20 == 0 ? s.volume : s.volume - 1
             }
         }
         set {
             state.withLock {
-                $0.volume = newValue
+                if !$0.rejectsWrites { $0.volume = newValue }
                 $0.volumeWrites.append(newValue)
             }
         }

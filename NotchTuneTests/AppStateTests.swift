@@ -28,6 +28,35 @@ struct AppStateTests {
         return done()
     }
 
+    @Test("Toggle updates the icon and remutes an ongoing ad")
+    func toggleReconciles() async {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        let state = makeState(fake)
+        defer { state.shutdown() }
+        state.start()
+        #expect(await waitFor { state.isMuting })
+        state.isOn = false
+        #expect(!state.isMuting)
+        state.isOn = true
+        #expect(await waitFor { state.isMuting && fake.soundVolume == 0 })
+    }
+
+    @Test("Missed notifications still mute ads and restore music")
+    func missedNotifications() async {
+        let fake = FakeSpotify()
+        fake.track = .song()
+        let state = makeState(fake)
+        defer { state.shutdown() }
+        state.start()
+        #expect(await waitFor { state.snapshot.track == TrackInfo.song() })
+        fake.track = .ad()
+        #expect(await waitFor { state.isMuting && fake.soundVolume == 0 })
+        #expect(state.adsMuted == 1)
+        fake.track = .song()
+        #expect(await waitFor { !state.isMuting && fake.soundVolume == 70 })
+    }
+
     @Test("A fake ad mutes Spotify, and ending it restores")
     func fakeAdMutesAndRestores() async {
         let fake = FakeSpotify()
@@ -46,7 +75,7 @@ struct AppStateTests {
         #expect(await waitFor { state.isMuting == false })
     }
 
-    @Test("Muted ads are counted and kept")
+    @Test("Simulated ads do not change the real ad count")
     func countsAds() async {
         let fake = FakeSpotify()
         fake.userSetsVolume(70)
@@ -56,7 +85,8 @@ struct AppStateTests {
 
         #expect(state.adsMuted == 0)
         state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { state.adsMuted == 1 })
+        #expect(await waitFor { state.isMuting })
+        #expect(state.adsMuted == 0)
     }
 
     @Test("Switching off restores the volume and ignores ads")

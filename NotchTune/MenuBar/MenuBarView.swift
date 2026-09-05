@@ -30,11 +30,14 @@ struct MenuBarView: View {
 
         Divider()
 
+        #if DEBUG
         Button("Simulate ad (\(Int(AppState.fakeAdSeconds))s)") {
             state.simulateAd()
         }
 
         Divider()
+
+        #endif
 
         Button("Quit NotchTune") {
             NSApplication.shared.terminate(nil)

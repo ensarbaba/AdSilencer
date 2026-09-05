@@ -49,13 +49,11 @@ struct TrackInfoTests {
     func adDisplayText() {
         let ad = TrackInfo.ad()
         #expect(ad.displayTitle == "Advertisement")
-        #expect(ad.displaySubtitle == "Muted by NotchTune")
     }
 
     @Test("Tracks show artist and album")
     func songDisplayText() {
         #expect(TrackInfo.song().displayTitle == "Song")
-        #expect(TrackInfo.song().displaySubtitle == "Artist · Album")
     }
 
     @Test("A nameless track still shows something")
@@ -63,7 +61,6 @@ struct TrackInfoTests {
         let blank = TrackInfo(id: "spotify:track:x", name: "", artist: "", album: "",
                               durationMS: 0)
         #expect(blank.displayTitle == "Unknown Track")
-        #expect(blank.displaySubtitle == nil)
     }
 
     @Test("A simulated ad is indistinguishable from a real one to the detector")
