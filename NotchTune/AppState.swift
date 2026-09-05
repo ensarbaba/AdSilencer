@@ -40,7 +40,7 @@ final class AppState {
         didSet {
             defaults.set(isOn, forKey: Keys.on)
             muter.isOn = isOn
-            isMuting = muter.isMuting
+            isMuting = isOn && muter.isMuting
             watcher?.refresh()
         }
     }
@@ -93,11 +93,11 @@ final class AppState {
         watcher.start()
     }
 
-    /// Puts the volume back. Called on quit and on any termination signal.
+    /// Disables muting and restores volume before stopping playback reads.
     func shutdown() {
+        muter.isOn = false
         watcher?.stop()
         watcher = nil
-        muter.restore()
     }
 
     func simulateAd(seconds: TimeInterval = AppState.fakeAdSeconds) {

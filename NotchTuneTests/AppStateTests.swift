@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Synchronization
 import Testing
 @testable import NotchTune
 
@@ -26,6 +27,33 @@ struct AppStateTests {
             try? await Task.sleep(for: .milliseconds(25))
         }
         return done()
+    }
+
+    @Test("Shutdown prevents an in-flight ad read from muting again")
+    func shutdownDuringRead() async throws {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        let entered = Mutex(false)
+        let release = DispatchSemaphore(value: 0)
+        fake.beforeTrackRead = {
+            entered.withLock { $0 = true }
+            release.wait()
+        }
+        let state = makeState(fake)
+        defer {
+            fake.beforeTrackRead = nil
+            release.signal()
+            state.shutdown()
+        }
+        state.start()
+        try #require(await waitFor { entered.withLock { $0 } })
+        state.shutdown()
+        release.signal()
+
+        // Publishing happens after the blocked read has reached the muter.
+        #expect(await waitFor { state.snapshot.track == TrackInfo.ad() })
+        #expect(fake.soundVolume == 70)
+        #expect(!state.isMuting)
     }
 
     @Test("Toggle updates the icon and remutes an ongoing ad")

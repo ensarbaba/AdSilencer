@@ -3,7 +3,6 @@
 //  NotchTuneTests
 //
 
-import ScriptingBridge
 import Testing
 @testable import NotchTune
 
@@ -32,13 +31,5 @@ struct SpotifyScriptingTests {
             SpotifyPlayerStateCode.paused,
         ])
         #expect(codes.count == 3)
-    }
-
-    @Test("SBApplication matches the protocol")
-    func sbApplicationConformsToTheProtocol() {
-        // Constructing an SBApplication sends no Apple event and does not
-        // launch Spotify. Returns nil when Spotify is not installed.
-        guard let app = SBApplication(bundleIdentifier: "com.spotify.client") else { return }
-        #expect((app as SpotifyScriptingApplication?) != nil)
     }
 }

@@ -26,9 +26,6 @@ enum SpotifyPlayerStateCode {
 @objc protocol SpotifyScriptingTrack {
     @objc optional var id: String { get }
     @objc optional var name: String { get }
-    @objc optional var artist: String { get }
-    @objc optional var album: String { get }
-    @objc optional var duration: Int { get }
 }
 
 @objc protocol SpotifyScriptingApplication {

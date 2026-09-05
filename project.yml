@@ -29,7 +29,7 @@ targets:
         INFOPLIST_FILE: NotchTune/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         # Personal build. Ad-hoc signed.
-        # Sandbox must stay off, or Spotify's notifications arrive empty.
+        # Spotify is controlled through Apple events.
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
         ENABLE_HARDENED_RUNTIME: NO

@@ -7,7 +7,7 @@
 //  `apply(adPlaying:)` takes the current state, not a change, so a repeated or
 //  duplicate report is harmless.
 //
-//  The watcher supplies event reads and periodic reconciliation.
+//  The watcher reads Spotify once a second.
 //
 
 import Foundation
@@ -103,9 +103,8 @@ final class AdMuter: Sendable {
     /// switching the app off.
     func restore() {
         state.withLock { s in
-            // Unconditional: this runs on quit and when switching off, so it is
-            // the last chance to undo a mute. A failure here cannot be retried.
-            if s.phase != .yielded { _ = putBack(&s) }
+            // Failed restoration stays pending for the next poll.
+            if s.phase != .yielded, !putBack(&s) { return }
             s.phase = .idle
             s.saved = nil
         }
@@ -115,6 +114,11 @@ final class AdMuter: Sendable {
     /// can keep the saved value and try again.
     private func putBack(_ s: inout State) -> Bool {
         guard let saved = s.saved, saved > 0 else { return true }
+
+        let current = spotify.soundVolume
+        guard current >= 0 else { return false }
+        // An audible volume belongs to the user, even between polls.
+        if current > 0 { return true }
 
         spotify.soundVolume = saved
         var back = spotify.soundVolume

@@ -34,7 +34,7 @@ struct PlaybackSnapshot: Equatable, Sendable {
 
 final class SpotifyWatcher: Sendable {
 
-    /// Worst case delay before an ad is noticed.
+    /// Time between playback reads.
     static let interval: TimeInterval = 1
 
     private struct State {
@@ -96,7 +96,7 @@ final class SpotifyWatcher: Sendable {
     func simulateAd(for duration: TimeInterval) {
         queue.async { [weak self] in
             guard let self else { return }
-            self.state.withLock { $0.fakeTrack = .simulatedAd(duration: duration) }
+            self.state.withLock { $0.fakeTrack = .simulatedAd() }
             self.read()
         }
         queue.asyncAfter(deadline: .now() + duration) { [weak self] in

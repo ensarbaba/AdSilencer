@@ -113,7 +113,7 @@ final class SpotifyBridge: SpotifyControlling {
     }
 
     func currentTrack() -> TrackInfo? {
-        // One app object for all five reads below.
+        // Only the id and display name are needed.
         guard let track = makeApp()?.currentTrack else { return nil }
         // Spotify returns a live object even when nothing is loaded. A missing
         // or empty id is how that appears.
@@ -121,10 +121,7 @@ final class SpotifyBridge: SpotifyControlling {
 
         return TrackInfo(
             id: id,
-            name: track.name ?? "",
-            artist: track.artist ?? "",
-            album: track.album ?? "",
-            durationMS: track.duration ?? 0
+            name: track.name ?? ""
         )
     }
 }

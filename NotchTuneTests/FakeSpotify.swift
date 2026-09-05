@@ -23,6 +23,7 @@ final class FakeSpotify: SpotifyControlling {
         var emulatesReadbackDrift = false
         var rejectsWrites = false
         var failsReadback = false
+        var beforeTrackRead: (@Sendable () -> Void)?
     }
 
     private let state = Mutex(State())
@@ -89,5 +90,13 @@ final class FakeSpotify: SpotifyControlling {
         state.withLock { $0.volume = value }
     }
 
-    func currentTrack() -> TrackInfo? { state.withLock { $0.track } }
+    var beforeTrackRead: (@Sendable () -> Void)? {
+        get { state.withLock { $0.beforeTrackRead } }
+        set { state.withLock { $0.beforeTrackRead = newValue } }
+    }
+
+    func currentTrack() -> TrackInfo? {
+        beforeTrackRead?()
+        return state.withLock { $0.track }
+    }
 }

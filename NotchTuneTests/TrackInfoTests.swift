@@ -16,14 +16,9 @@ struct TrackInfoTests {
 
     @Test("Podcast episodes are not treated as ads")
     func episodesAreNotAds() {
-        // Episodes also carry empty artist/album, which is why that heuristic
-        // is deliberately unused.
         let episode = TrackInfo(
             id: "spotify:episode:abc",
-            name: "Some Episode",
-            artist: "",
-            album: "",
-            durationMS: 1_800_000
+            name: "Some Episode"
         )
         #expect(episode.isAd == false)
     }
@@ -33,14 +28,11 @@ struct TrackInfoTests {
         #expect(TrackInfo.ad(id: "SPOTIFY:AD:XYZ").isAd)
     }
 
-    @Test("A local file with no metadata is not an ad")
+    @Test("A local file is not an ad")
     func localFileIsNotAnAd() {
         let local = TrackInfo(
             id: "spotify:local:::Some+File:212",
-            name: "Some File",
-            artist: "",
-            album: "",
-            durationMS: 212_000
+            name: "Some File"
         )
         #expect(local.isAd == false)
     }
@@ -51,23 +43,20 @@ struct TrackInfoTests {
         #expect(ad.displayTitle == "Advertisement")
     }
 
-    @Test("Tracks show artist and album")
+    @Test("Tracks show their name")
     func songDisplayText() {
         #expect(TrackInfo.song().displayTitle == "Song")
     }
 
     @Test("A nameless track still shows something")
     func emptyNameFallsBack() {
-        let blank = TrackInfo(id: "spotify:track:x", name: "", artist: "", album: "",
-                              durationMS: 0)
+        let blank = TrackInfo(id: "spotify:track:x", name: "")
         #expect(blank.displayTitle == "Unknown Track")
     }
 
     @Test("A simulated ad is indistinguishable from a real one to the detector")
     func simulatedAdIsDetectedAsAnAd() {
-        let simulated = TrackInfo.simulatedAd(duration: 15)
+        let simulated = TrackInfo.simulatedAd()
         #expect(simulated.isAd)
-        // The factory takes seconds and stores Spotify's milliseconds.
-        #expect(simulated.durationMS == 15_000)
     }
 }

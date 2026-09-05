@@ -3,17 +3,11 @@
 //  NotchTune
 //
 
-import Foundation
-
 /// The item Spotify is currently playing.
 struct TrackInfo: Equatable {
     /// Spotify URI, such as `spotify:track:71GMl3Q7U4JnrTqI9kfcoN`.
     let id: String
     let name: String
-    let artist: String
-    let album: String
-    /// Length in milliseconds. Spotify's dictionary documents seconds.
-    let durationMS: Int
 
     /// True when `id` starts with the ad URI prefix.
     ///
@@ -34,13 +28,10 @@ struct TrackInfo: Equatable {
 
 extension TrackInfo {
     /// Ad used by the "Simulate ad" menu item.
-    static func simulatedAd(duration: TimeInterval) -> TrackInfo {
+    static func simulatedAd() -> TrackInfo {
         TrackInfo(
             id: "spotify:ad:debug",
-            name: "Simulated Ad",
-            artist: "",
-            album: "",
-            durationMS: Int(duration * 1000)
+            name: "Simulated Ad"
         )
     }
 }

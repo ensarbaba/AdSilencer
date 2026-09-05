@@ -16,6 +16,35 @@ struct AdMuterTests {
         return (AdMuter(spotify: fake), fake)
     }
 
+    @Test("Switching off preserves a failed restore for the next poll")
+    func switchingOffRetriesRestore() {
+        let fake = FakeSpotify()
+        let muter = AdMuter(spotify: fake)
+        muter.apply(adPlaying: true)
+        fake.rejectsWrites = true
+        muter.isOn = false
+        #expect(fake.soundVolume == 0)
+        fake.rejectsWrites = false
+        muter.apply(adPlaying: false)
+        #expect(fake.soundVolume == 70)
+        #expect(!muter.isMuting)
+    }
+
+    @Test("A manual volume change just before restoration is preserved", arguments: [false, true])
+    func lateUserOverride(switchOff: Bool) {
+        let fake = FakeSpotify()
+        let muter = AdMuter(spotify: fake)
+        muter.apply(adPlaying: true)
+        fake.userSetsVolume(40)
+        if switchOff {
+            muter.isOn = false
+        } else {
+            muter.apply(adPlaying: false)
+        }
+        #expect(fake.soundVolume == 40)
+        #expect(!muter.isMuting)
+    }
+
     @Test("An unconfirmed mute still restores when the ad ends")
     func unconfirmedMuteRestores() {
         let fake = FakeSpotify()
