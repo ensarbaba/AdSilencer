@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Observation
 import Synchronization
 import SwiftUI
 
@@ -24,7 +25,8 @@ private final class AdCounter: Sendable {
 }
 
 @MainActor
-final class AppState: ObservableObject {
+@Observable
+final class AppState {
 
     private enum Keys {
         static let on = "muteAdsEnabled"
@@ -34,21 +36,21 @@ final class AppState: ObservableObject {
     /// Length of the ad the debug menu item fakes.
     static let fakeAdSeconds: TimeInterval = 15
 
-    @Published var isOn: Bool {
+    var isOn: Bool {
         didSet {
             defaults.set(isOn, forKey: Keys.on)
             muter.isOn = isOn
         }
     }
 
-    @Published private(set) var adsMuted: Int
-    @Published private(set) var snapshot: PlaybackSnapshot = .idle
-    @Published private(set) var isMuting = false
+    private(set) var adsMuted: Int
+    private(set) var snapshot: PlaybackSnapshot = .idle
+    private(set) var isMuting = false
 
     private let spotify: SpotifyControlling
     private let defaults: UserDefaults
     private let muter: AdMuter
-    private var watcher: SpotifyWatcher?
+    @ObservationIgnored private var watcher: SpotifyWatcher?
 
     /// Bumped by the muter on the watcher queue, read back when publishing.
     private let counter: AdCounter
