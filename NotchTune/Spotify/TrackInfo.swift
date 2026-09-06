@@ -25,13 +25,3 @@ struct TrackInfo: Equatable {
         return name.isEmpty ? "Unknown Track" : name
     }
 }
-
-extension TrackInfo {
-    /// Ad used by the "Simulate ad" menu item.
-    static func simulatedAd() -> TrackInfo {
-        TrackInfo(
-            id: "spotify:ad:debug",
-            name: "Simulated Ad"
-        )
-    }
-}

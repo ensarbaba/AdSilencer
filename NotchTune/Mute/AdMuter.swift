@@ -62,7 +62,7 @@ final class AdMuter: Sendable {
     }
 
     /// Call with the current ad state on every read.
-    func apply(adPlaying: Bool, countAd: Bool = true) {
+    func apply(adPlaying: Bool) {
         var muted = false
 
         state.withLock { s in
@@ -90,7 +90,7 @@ final class AdMuter: Sendable {
                 spotify.soundVolume = Self.muteLevel
                 guard Self.isSilent(spotify.soundVolume) else { return }
                 s.phase = .muting
-                muted = countAd
+                muted = true
 
             case .muting:
                 let current = spotify.soundVolume

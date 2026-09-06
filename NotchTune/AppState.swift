@@ -33,9 +33,6 @@ final class AppState {
         static let count = "adsMutedCount"
     }
 
-    /// Length of the ad the debug menu item fakes.
-    static let fakeAdSeconds: TimeInterval = 15
-
     var isOn: Bool {
         didSet {
             defaults.set(isOn, forKey: Keys.on)
@@ -80,7 +77,7 @@ final class AppState {
 
         let watcher = SpotifyWatcher(spotify: spotify) { [weak self] snapshot in
             // Watcher queue. Mute first, publish after.
-            muter.apply(adPlaying: snapshot.isAdPlaying, countAd: !snapshot.isSimulated)
+            muter.apply(adPlaying: snapshot.isAdPlaying)
             let muting = muter.isMuting
             let count = counter.count
 
@@ -98,10 +95,6 @@ final class AppState {
         muter.isOn = false
         watcher?.stop()
         watcher = nil
-    }
-
-    func simulateAd(seconds: TimeInterval = AppState.fakeAdSeconds) {
-        watcher?.simulateAd(for: seconds)
     }
 
     private func publish(_ snapshot: PlaybackSnapshot, muting: Bool, count: Int) {

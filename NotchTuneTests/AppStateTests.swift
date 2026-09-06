@@ -70,8 +70,8 @@ struct AppStateTests {
         #expect(await waitFor { state.isMuting && AdMuter.isSilentForTests(fake.soundVolume) })
     }
 
-    @Test("Missed notifications still mute ads and restore music")
-    func missedNotifications() async {
+    @Test("An ad found by polling is muted, and the music comes back after")
+    func pollingMutesAndRestores() async {
         let fake = FakeSpotify()
         fake.track = .song()
         let state = makeState(fake)
@@ -79,54 +79,44 @@ struct AppStateTests {
         state.start()
         #expect(await waitFor { state.snapshot.track == TrackInfo.song() })
         fake.track = .ad()
-        #expect(await waitFor { state.isMuting && AdMuter.isSilentForTests(fake.soundVolume) })
-        #expect(state.adsMuted == 1)
+        #expect(await waitFor(5) { state.isMuting && AdMuter.isSilentForTests(fake.soundVolume) })
         fake.track = .song()
-        #expect(await waitFor { !state.isMuting && fake.soundVolume == 70 })
+        #expect(await waitFor(5) { !state.isMuting && fake.soundVolume == 70 })
     }
 
-    @Test("A fake ad mutes Spotify, and ending it restores")
-    func fakeAdMutesAndRestores() async {
-        let fake = FakeSpotify()
-        fake.userSetsVolume(70)
-        fake.track = .song()
-
-        let state = makeState(fake)
-        defer { state.shutdown() }
-        state.start()
-
-        state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { AdMuter.isSilentForTests(fake.soundVolume) })
-        #expect(await waitFor { state.isMuting })
-
-        #expect(await waitFor(5) { fake.soundVolume == 70 })
-        #expect(await waitFor { state.isMuting == false })
-    }
-
-    @Test("Simulated ads do not change the real ad count")
+    @Test("Each ad counts once, however many reads it spans")
     func countsAds() async {
         let fake = FakeSpotify()
-        fake.userSetsVolume(70)
+        fake.track = .song()
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()
 
         #expect(state.adsMuted == 0)
-        state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { state.isMuting })
-        #expect(state.adsMuted == 0)
+
+        fake.track = .ad()
+        #expect(await waitFor(5) { state.adsMuted == 1 })
+
+        // More polls of the same ad must not count it again.
+        try? await Task.sleep(for: .seconds(2))
+        #expect(state.adsMuted == 1)
+
+        fake.track = .song()
+        #expect(await waitFor(5) { !state.isMuting })
+        fake.track = .ad(id: "spotify:ad:second")
+        #expect(await waitFor(5) { state.adsMuted == 2 })
     }
 
     @Test("Switching off restores the volume and ignores ads")
     func switchingOffRestores() async {
         let fake = FakeSpotify()
         fake.userSetsVolume(65)
+        fake.track = .ad()
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()
 
-        state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { AdMuter.isSilentForTests(fake.soundVolume) })
+        #expect(await waitFor(5) { AdMuter.isSilentForTests(fake.soundVolume) })
 
         state.isOn = false
         #expect(fake.soundVolume == 65)
@@ -136,11 +126,11 @@ struct AppStateTests {
     func shutdownRestores() async {
         let fake = FakeSpotify()
         fake.userSetsVolume(85)
+        fake.track = .ad()
         let state = makeState(fake)
         state.start()
 
-        state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { AdMuter.isSilentForTests(fake.soundVolume) })
+        #expect(await waitFor(5) { AdMuter.isSilentForTests(fake.soundVolume) })
 
         state.shutdown()
         #expect(fake.soundVolume == 85)
@@ -186,13 +176,12 @@ struct AppStateTests {
     @Test("Muting an ad leaves the menu bar icon alone")
     func iconIgnoresAds() async {
         let fake = FakeSpotify()
-        fake.userSetsVolume(70)
+        fake.track = .ad()
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()
 
-        state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { state.isMuting })
+        #expect(await waitFor(5) { state.isMuting })
         #expect(state.menuBarImage == "MenuBarOn")
     }
 }

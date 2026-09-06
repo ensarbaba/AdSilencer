@@ -83,40 +83,6 @@ struct SpotifyWatcherTests {
         #expect(recorder.all.first?.track == TrackInfo.song())
     }
 
-    @Test("A fake ad starts, then ends")
-    func fakeAdStartsAndEnds() async {
-        let fake = FakeSpotify()
-        fake.track = .song()
-        let recorder = Recorder()
-        let watcher = makeWatcher(fake, recorder)
-        defer { watcher.stop() }
-
-        watcher.start()
-        #expect(await recorder.waitCount(1))
-
-        watcher.simulateAd(for: 0.4)
-        #expect(await recorder.waitFor { $0.isAdPlaying })
-        fake.track = .song(id: "spotify:track:after", name: "After")
-        #expect(await recorder.waitFor { $0.track?.name == "After" && !$0.isAdPlaying })
-    }
-
-    @Test("A fake ad ignores what Spotify says")
-    func fakeAdOverridesSpotify() async {
-        // Spotify is stopped with nothing loaded, yet the ad must register.
-        let fake = FakeSpotify()
-        fake.playerState = .stopped
-        fake.track = nil
-        let recorder = Recorder()
-        let watcher = makeWatcher(fake, recorder)
-        defer { watcher.stop() }
-
-        watcher.start()
-        #expect(await recorder.waitCount(1))
-
-        watcher.simulateAd(for: 0.4)
-        #expect(await recorder.waitFor { $0.isAdPlaying })
-    }
-
     @Test("Stopping ends reads")
     func stopEndsReads() async throws {
         let fake = FakeSpotify()

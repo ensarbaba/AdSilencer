@@ -53,5 +53,5 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
 
 Swift Testing, not XCTest.
 
-The simulated ad path hardcodes `state: .playing` and never reads `playerState`.
-Tests that run through it cover the mute logic only, not the real trigger.
+Tests drive `FakeSpotify` and wait for the 1 Hz poll to notice, which is the
+same path a real ad takes. Nothing can force an ad instantly.

@@ -53,10 +53,4 @@ struct TrackInfoTests {
         let blank = TrackInfo(id: "spotify:track:x", name: "")
         #expect(blank.displayTitle == "Unknown Track")
     }
-
-    @Test("A simulated ad is indistinguishable from a real one to the detector")
-    func simulatedAdIsDetectedAsAnAd() {
-        let simulated = TrackInfo.simulatedAd()
-        #expect(simulated.isAd)
-    }
 }

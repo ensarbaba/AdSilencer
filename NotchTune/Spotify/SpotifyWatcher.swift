@@ -20,7 +20,6 @@ struct PlaybackSnapshot: Equatable, Sendable {
     let access: SpotifyAccess
     let state: SpotifyPlayerState
     let track: TrackInfo?
-    var isSimulated = false
 
     static let idle = PlaybackSnapshot(
         isRunning: false, access: .unavailable, state: .stopped, track: nil
@@ -40,7 +39,6 @@ final class SpotifyWatcher: Sendable {
     private struct State {
         var timer: DispatchSourceTimer?
         var running = false
-        var fakeTrack: TrackInfo?
     }
 
     /// All Spotify reads happen here, so a slow reply cannot block the UI.
@@ -79,7 +77,6 @@ final class SpotifyWatcher: Sendable {
         let timer = state.withLock { state -> DispatchSourceTimer? in
             defer {
                 state.running = false
-                state.fakeTrack = nil
                 state.timer = nil
             }
             return state.timer
@@ -92,20 +89,6 @@ final class SpotifyWatcher: Sendable {
         queue.async { [weak self] in self?.read() }
     }
 
-    /// Pretends an ad is playing, so muting can be checked on demand.
-    func simulateAd(for duration: TimeInterval) {
-        queue.async { [weak self] in
-            guard let self else { return }
-            self.state.withLock { $0.fakeTrack = .simulatedAd() }
-            self.read()
-        }
-        queue.asyncAfter(deadline: .now() + duration) { [weak self] in
-            guard let self else { return }
-            self.state.withLock { $0.fakeTrack = nil }
-            self.read()
-        }
-    }
-
     /// Runs on `queue`.
     private func read() {
         guard state.withLock({ $0.running }) else { return }
@@ -113,11 +96,6 @@ final class SpotifyWatcher: Sendable {
     }
 
     private func snapshot() -> PlaybackSnapshot {
-        if let fake = state.withLock({ $0.fakeTrack }) {
-            return PlaybackSnapshot(
-                isRunning: true, access: .ok, state: .playing, track: fake, isSimulated: true
-            )
-        }
         guard spotify.isRunning else { return .idle }
         return PlaybackSnapshot(
             isRunning: true,
