@@ -67,7 +67,7 @@ struct AppStateTests {
         state.isOn = false
         #expect(!state.isMuting)
         state.isOn = true
-        #expect(await waitFor { state.isMuting && fake.soundVolume == 0 })
+        #expect(await waitFor { state.isMuting && AdMuter.isSilentForTests(fake.soundVolume) })
     }
 
     @Test("Missed notifications still mute ads and restore music")
@@ -79,7 +79,7 @@ struct AppStateTests {
         state.start()
         #expect(await waitFor { state.snapshot.track == TrackInfo.song() })
         fake.track = .ad()
-        #expect(await waitFor { state.isMuting && fake.soundVolume == 0 })
+        #expect(await waitFor { state.isMuting && AdMuter.isSilentForTests(fake.soundVolume) })
         #expect(state.adsMuted == 1)
         fake.track = .song()
         #expect(await waitFor { !state.isMuting && fake.soundVolume == 70 })
@@ -96,7 +96,7 @@ struct AppStateTests {
         state.start()
 
         state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { fake.soundVolume == 0 })
+        #expect(await waitFor { AdMuter.isSilentForTests(fake.soundVolume) })
         #expect(await waitFor { state.isMuting })
 
         #expect(await waitFor(5) { fake.soundVolume == 70 })
@@ -126,7 +126,7 @@ struct AppStateTests {
         state.start()
 
         state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { fake.soundVolume == 0 })
+        #expect(await waitFor { AdMuter.isSilentForTests(fake.soundVolume) })
 
         state.isOn = false
         #expect(fake.soundVolume == 65)
@@ -140,7 +140,7 @@ struct AppStateTests {
         state.start()
 
         state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { fake.soundVolume == 0 })
+        #expect(await waitFor { AdMuter.isSilentForTests(fake.soundVolume) })
 
         state.shutdown()
         #expect(fake.soundVolume == 85)

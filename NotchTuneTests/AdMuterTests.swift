@@ -23,7 +23,7 @@ struct AdMuterTests {
         muter.apply(adPlaying: true)
         fake.rejectsWrites = true
         muter.isOn = false
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
         fake.rejectsWrites = false
         muter.apply(adPlaying: false)
         #expect(fake.soundVolume == 70)
@@ -82,7 +82,7 @@ struct AdMuterTests {
         fake.rejectsWrites = false
         muter.apply(adPlaying: true)
         #expect(muter.isMuting)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
         #expect(count.withLock { $0 } == 1)
     }
 
@@ -91,7 +91,7 @@ struct AdMuterTests {
         let (muter, fake) = make(volume: 70)
 
         muter.apply(adPlaying: true)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
         #expect(muter.isMuting)
 
         muter.apply(adPlaying: false)
@@ -104,7 +104,7 @@ struct AdMuterTests {
         let (muter, fake) = make(volume: 55)
 
         for _ in 0..<10 { muter.apply(adPlaying: true) }
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
 
         muter.apply(adPlaying: false)
         #expect(fake.soundVolume == 55)
@@ -115,11 +115,11 @@ struct AdMuterTests {
         let (muter, fake) = make(volume: 0)
 
         muter.apply(adPlaying: true)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
 
         // Nothing worth restoring was saved, so nothing is written back.
         muter.apply(adPlaying: false)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
     }
 
     @Test("Raising the volume mid-ad hands control back")
@@ -127,7 +127,7 @@ struct AdMuterTests {
         let (muter, fake) = make(volume: 70)
 
         muter.apply(adPlaying: true)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
 
         fake.userSetsVolume(40)
         muter.apply(adPlaying: true)
@@ -153,7 +153,7 @@ struct AdMuterTests {
 
         muter.apply(adPlaying: false)
         muter.apply(adPlaying: true)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
     }
 
     @Test("Switching off mid-ad gives the volume back")
@@ -161,7 +161,7 @@ struct AdMuterTests {
         let (muter, fake) = make(volume: 90)
 
         muter.apply(adPlaying: true)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
 
         muter.isOn = false
         #expect(fake.soundVolume == 90)
@@ -196,7 +196,7 @@ struct AdMuterTests {
 
         for _ in 0..<25 {
             muter.apply(adPlaying: true)
-            #expect(fake.soundVolume == 0)
+            #expect(AdMuter.isSilentForTests(fake.soundVolume))
             muter.apply(adPlaying: false)
             #expect(fake.soundVolume == start)
         }
@@ -232,7 +232,7 @@ struct AdMuterTests {
 
             for _ in 0..<10 {
                 muter.apply(adPlaying: true)
-                #expect(fake.soundVolume == 0)
+                #expect(AdMuter.isSilentForTests(fake.soundVolume))
                 muter.apply(adPlaying: false)
                 #expect(fake.soundVolume == settled, "drifted from a start of \(start)")
             }
@@ -267,11 +267,11 @@ struct AdMuterRestoreRetryTests {
         let muter = AdMuter(spotify: fake)
 
         muter.apply(adPlaying: true)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
 
         fake.rejectsWrites = true
         muter.apply(adPlaying: false)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
 
         // Writes work again, and the next read puts the volume back.
         fake.rejectsWrites = false
@@ -288,7 +288,7 @@ struct AdMuterRestoreRetryTests {
         muter.apply(adPlaying: true)
         fake.rejectsWrites = true
         muter.apply(adPlaying: false)
-        #expect(fake.soundVolume == 0)
+        #expect(AdMuter.isSilentForTests(fake.soundVolume))
 
         // Another ad arrives while still stuck silent. The saved volume must
         // survive, otherwise zero becomes the value restored forever.

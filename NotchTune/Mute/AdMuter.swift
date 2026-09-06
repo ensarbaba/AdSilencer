@@ -15,10 +15,20 @@ import Synchronization
 
 final class AdMuter: Sendable {
 
+    /// One, not zero. Some ads are reported to pause at zero.
+    static let muteLevel = 1
+
+    /// Writing 1 reads back as 0, so both count as silent.
+    private static func isSilent(_ volume: Int) -> Bool {
+        volume >= 0 && volume <= muteLevel
+    }
+
+    static func isSilentForTests(_ volume: Int) -> Bool { isSilent(volume) }
+
     private enum Phase {
         /// Not muting.
         case idle
-        /// Volume held at zero.
+        /// Volume held down.
         case muting
         /// Ad still on, but the user moved the slider, so leave it alone.
         case yielded
@@ -74,18 +84,18 @@ final class AdMuter: Sendable {
                 guard spotify.access == .ok else { return }
                 let current = spotify.soundVolume
                 guard current >= 0 else { return }
-                // Only remember a volume worth returning to. Restoring a saved
-                // zero later would look like a bug.
-                if current > 0 { s.saved = current }
-                spotify.soundVolume = 0
-                guard spotify.soundVolume == 0 else { return }
+                // Only remember a volume worth returning to. Restoring an
+                // already silent value later would look like a bug.
+                if !Self.isSilent(current) { s.saved = current }
+                spotify.soundVolume = Self.muteLevel
+                guard Self.isSilent(spotify.soundVolume) else { return }
                 s.phase = .muting
                 muted = countAd
 
             case .muting:
                 let current = spotify.soundVolume
                 guard current >= 0 else { return }
-                if current != 0 {
+                if !Self.isSilent(current) {
                     // The user moved the slider. Take their value and stop.
                     s.saved = current
                     s.phase = .yielded
@@ -110,33 +120,27 @@ final class AdMuter: Sendable {
         }
     }
 
-    /// Returns false when the volume is still silent afterwards, so the caller
-    /// can keep the saved value and try again.
+    /// False means still silent, so the caller should keep the saved value and
+    /// try again.
     private func putBack(_ s: inout State) -> Bool {
         guard let saved = s.saved, saved > 0 else { return true }
 
         let current = spotify.soundVolume
         guard current >= 0 else { return false }
         // An audible volume belongs to the user, even between polls.
-        if current > 0 { return true }
+        if !Self.isSilent(current) { return true }
 
         spotify.soundVolume = saved
         var back = spotify.soundVolume
 
-        // Spotify reports a written volume one step lower unless it is a
-        // multiple of 20. Writing the saved number straight back would lose a
-        // step on every ad and walk the volume down to nothing.
-        //
-        // One step up lands on the saved value for all but 19, 39, 59, 79 and
-        // 99, which Spotify cannot report at all. Those land one step high and
-        // then stay put, so the volume never drifts either way.
+        // Spotify reads back one step low, so writing the saved number would
+        // lose a step on every ad. One step up lands where it started.
         if back != saved, back >= 0 {
             spotify.soundVolume = min(saved + 1, 100)
             back = spotify.soundVolume
         }
 
-        // Anything audible counts. A negative reading means Spotify could not
-        // answer, and zero means the write never landed.
-        return back > 0
+        // Negative means Spotify could not answer. Silent means it never landed.
+        return !Self.isSilent(back)
     }
 }
