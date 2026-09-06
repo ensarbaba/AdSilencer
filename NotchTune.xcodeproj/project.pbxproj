@@ -18,6 +18,7 @@
 		44C939F4D3B457BF03C9B282 /* SpotifyScripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44190405DF6749052B9F39E /* SpotifyScripting.swift */; };
 		49301AA7AC506CD83603376B /* TrackInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A7DDCDACF3F6E4A69911593 /* TrackInfo.swift */; };
 		5772E12534F00B129792D817 /* SpotifyWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA0D47775F323748B171E89 /* SpotifyWatcherTests.swift */; };
+		80C18EE273C5E255D546D771 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ECE77AC632FBBF1021868A32 /* Assets.xcassets */; };
 		84EFD2FFDC10A555C67644FB /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85604C55F9878130A1FD401A /* AppState.swift */; };
 		86B13DDD5829AA0E6558B9FE /* ScriptingBridge.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D7615C5D8C649A6C9827F0AB /* ScriptingBridge.framework */; };
 		ABEC93F21E4805854B1B55BB /* AdMuterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E5A5AF536B3D24058F993F /* AdMuterTests.swift */; };
@@ -56,6 +57,7 @@
 		D44190405DF6749052B9F39E /* SpotifyScripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyScripting.swift; sourceTree = "<group>"; };
 		D7615C5D8C649A6C9827F0AB /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
 		E481EF20AF5ECBE58E09E933 /* AdMuter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMuter.swift; sourceTree = "<group>"; };
+		ECE77AC632FBBF1021868A32 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F176E724DB3232B329D6B37B /* NotchTuneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NotchTuneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -109,6 +111,7 @@
 			isa = PBXGroup;
 			children = (
 				85604C55F9878130A1FD401A /* AppState.swift */,
+				ECE77AC632FBBF1021868A32 /* Assets.xcassets */,
 				60578395FF185E9AC45EBA6D /* Info.plist */,
 				65D2F9C8D1A79D24D222CF94 /* NotchTuneApp.swift */,
 				AA062214A8D005E49E3EF202 /* MenuBar */,
@@ -179,6 +182,7 @@
 			buildConfigurationList = 568B98CAE796C596C1902471 /* Build configuration list for PBXNativeTarget "NotchTune" */;
 			buildPhases = (
 				499C773A0922E0A040560367 /* Sources */,
+				2AFAEC8315C9EDCA6C3BB038 /* Resources */,
 				63FFF248CB10B671CD459378 /* Frameworks */,
 			);
 			buildRules = (
@@ -225,6 +229,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2AFAEC8315C9EDCA6C3BB038 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80C18EE273C5E255D546D771 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		2C9C688988B4E2664E61470D /* Sources */ = {

@@ -131,7 +131,9 @@ final class AppState {
         }
     }
 
-    var menuBarSymbol: String {
-        isMuting ? "speaker.slash.fill" : "music.note"
+    /// The slash is on the icon only while muting is switched on. Template
+    /// images, so macOS tints them for light and dark menu bars.
+    var menuBarImage: String {
+        isOn ? "MenuBarOn" : "MenuBarOff"
     }
 }

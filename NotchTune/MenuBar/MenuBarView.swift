@@ -30,15 +30,6 @@ struct MenuBarView: View {
 
         Divider()
 
-        #if DEBUG
-        Button("Simulate ad (\(Int(AppState.fakeAdSeconds))s)") {
-            state.simulateAd()
-        }
-
-        Divider()
-
-        #endif
-
         Button("Quit NotchTune") {
             NSApplication.shared.terminate(nil)
         }
@@ -58,6 +49,6 @@ struct MenuBarLabel: View {
     let state: AppState
 
     var body: some View {
-        Image(systemName: state.menuBarSymbol)
+        Image(state.menuBarImage)
     }
 }

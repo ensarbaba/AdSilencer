@@ -56,7 +56,7 @@ struct AppStateTests {
         #expect(!state.isMuting)
     }
 
-    @Test("Toggle updates the icon and remutes an ongoing ad")
+    @Test("Toggling back on remutes an ad that is already playing")
     func toggleReconciles() async {
         let fake = FakeSpotify()
         fake.track = .ad()
@@ -168,16 +168,31 @@ struct AppStateTests {
         #expect(await waitFor { state.statusLine == "Some Song" })
     }
 
-    @Test("The menu bar icon changes while muting")
-    func iconChangesWhileMuting() async {
+    @Test("Switching muting off drops the slash from the menu bar icon")
+    func iconFollowsTheSwitch() async {
         let fake = FakeSpotify()
         fake.userSetsVolume(70)
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()
 
-        #expect(state.menuBarSymbol == "music.note")
+        #expect(state.menuBarImage == "MenuBarOn")
+        state.isOn = false
+        #expect(state.menuBarImage == "MenuBarOff")
+        state.isOn = true
+        #expect(state.menuBarImage == "MenuBarOn")
+    }
+
+    @Test("Muting an ad leaves the menu bar icon alone")
+    func iconIgnoresAds() async {
+        let fake = FakeSpotify()
+        fake.userSetsVolume(70)
+        let state = makeState(fake)
+        defer { state.shutdown() }
+        state.start()
+
         state.simulateAd(seconds: 0.4)
-        #expect(await waitFor { state.menuBarSymbol == "speaker.slash.fill" })
+        #expect(await waitFor { state.isMuting })
+        #expect(state.menuBarImage == "MenuBarOn")
     }
 }
