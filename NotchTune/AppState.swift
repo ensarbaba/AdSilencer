@@ -10,19 +10,7 @@
 
 import Foundation
 import Observation
-import Synchronization
 import SwiftUI
-
-/// Counts muted ads. A class because `Mutex` is noncopyable and so cannot be
-/// captured by the muter's callback directly.
-private final class AdCounter: Sendable {
-    private let value: Mutex<Int>
-
-    init(_ start: Int) { value = Mutex(start) }
-
-    func bump() { value.withLock { $0 += 1 } }
-    var count: Int { value.withLock { $0 } }
-}
 
 @MainActor
 @Observable
@@ -51,38 +39,30 @@ final class AppState {
     private let muter: AdMuter
     @ObservationIgnored private var watcher: SpotifyWatcher?
 
-    /// Bumped by the muter on the watcher queue, read back when publishing.
-    private let counter: AdCounter
-
     init(spotify: SpotifyControlling = SpotifyBridge(), defaults: UserDefaults = .standard) {
         self.spotify = spotify
         self.defaults = defaults
         defaults.register(defaults: [Keys.on: true])
 
-        let startingCount = defaults.integer(forKey: Keys.count)
-        let counter = AdCounter(startingCount)
-        self.counter = counter
-        self.adsMuted = startingCount
+        self.adsMuted = defaults.integer(forKey: Keys.count)
 
         let on = defaults.bool(forKey: Keys.on)
         self.isOn = on
 
-        self.muter = AdMuter(spotify: spotify) { counter.bump() }
+        self.muter = AdMuter(spotify: spotify)
         self.muter.isOn = on
     }
 
     func start() {
         let muter = self.muter
-        let counter = self.counter
 
         let watcher = SpotifyWatcher(spotify: spotify) { [weak self] snapshot in
             // Watcher queue. Mute first, publish after.
-            muter.apply(adPlaying: snapshot.isAdPlaying)
+            let mutedAnAd = muter.apply(adPlaying: snapshot.isAdPlaying)
             let muting = muter.isMuting
-            let count = counter.count
 
             Task { @MainActor in
-                self?.publish(snapshot, muting: muting, count: count)
+                self?.publish(snapshot, muting: muting, mutedAnAd: mutedAnAd)
             }
         }
 
@@ -97,12 +77,12 @@ final class AppState {
         watcher = nil
     }
 
-    private func publish(_ snapshot: PlaybackSnapshot, muting: Bool, count: Int) {
+    private func publish(_ snapshot: PlaybackSnapshot, muting: Bool, mutedAnAd: Bool) {
         self.snapshot = snapshot
         self.isMuting = isOn && muting
-        if count != adsMuted {
-            adsMuted = count
-            defaults.set(count, forKey: Keys.count)
+        if mutedAnAd {
+            adsMuted += 1
+            defaults.set(adsMuted, forKey: Keys.count)
         }
     }
 

@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import Synchronization
 import Testing
 @testable import NotchTune
 
@@ -74,16 +73,13 @@ struct AdMuterTests {
     func rejectedMute() {
         let fake = FakeSpotify()
         fake.rejectsWrites = true
-        let count = Mutex(0)
-        let muter = AdMuter(spotify: fake) { count.withLock { $0 += 1 } }
-        muter.apply(adPlaying: true)
+        let muter = AdMuter(spotify: fake)
+        #expect(!muter.apply(adPlaying: true))
         #expect(!muter.isMuting)
-        #expect(count.withLock { $0 } == 0)
         fake.rejectsWrites = false
-        muter.apply(adPlaying: true)
+        #expect(muter.apply(adPlaying: true))
         #expect(muter.isMuting)
         #expect(AdMuter.isSilentForTests(fake.soundVolume))
-        #expect(count.withLock { $0 } == 1)
     }
 
     @Test("An ad mutes, ending it restores")
@@ -242,17 +238,14 @@ struct AdMuterTests {
     @Test("Each ad reports once, however many reads it spans")
     func reportsOncePerAd() {
         let fake = FakeSpotify()
-        let count = Mutex(0)
-        let muter = AdMuter(spotify: fake) { count.withLock { $0 += 1 } }
+        let muter = AdMuter(spotify: fake)
 
-        muter.apply(adPlaying: true)
-        muter.apply(adPlaying: true)
-        muter.apply(adPlaying: true)
-        #expect(count.withLock { $0 } == 1)
+        #expect(muter.apply(adPlaying: true))
+        #expect(!muter.apply(adPlaying: true))
+        #expect(!muter.apply(adPlaying: true))
 
         muter.apply(adPlaying: false)
-        muter.apply(adPlaying: true)
-        #expect(count.withLock { $0 } == 2)
+        #expect(muter.apply(adPlaying: true))
     }
 }
 

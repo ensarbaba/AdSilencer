@@ -41,12 +41,10 @@ final class AdMuter: Sendable {
     }
 
     private let spotify: SpotifyControlling
-    private let onMute: @Sendable () -> Void
     private let state = Mutex(State())
 
-    init(spotify: SpotifyControlling, onMute: @escaping @Sendable () -> Void = {}) {
+    init(spotify: SpotifyControlling) {
         self.spotify = spotify
-        self.onMute = onMute
     }
 
     var isOn: Bool {
@@ -61,8 +59,10 @@ final class AdMuter: Sendable {
         state.withLock { $0.phase == .muting }
     }
 
-    /// Call with the current ad state on every read.
-    func apply(adPlaying: Bool) {
+    /// Call with the current ad state on every read. Returns true on the read
+    /// that first mutes an ad, so the caller can count it.
+    @discardableResult
+    func apply(adPlaying: Bool) -> Bool {
         var muted = false
 
         state.withLock { s in
@@ -106,7 +106,7 @@ final class AdMuter: Sendable {
             }
         }
 
-        if muted { onMute() }
+        return muted
     }
 
     /// Puts the volume back. Safe when nothing is muted. Used on quit and when
