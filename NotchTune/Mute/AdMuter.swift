@@ -140,7 +140,8 @@ final class AdMuter: Sendable {
             back = spotify.soundVolume
         }
 
-        // Negative means Spotify could not answer. Silent means it never landed.
-        return !Self.isSilent(back)
+        // Negative means Spotify could not answer, so the write is unconfirmed
+        // and has to be tried again. Silent means it never landed.
+        return back >= 0 && !Self.isSilent(back)
     }
 }

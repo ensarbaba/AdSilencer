@@ -23,6 +23,7 @@ final class FakeSpotify: SpotifyControlling {
         var emulatesReadbackDrift = false
         var rejectsWrites = false
         var failsReadback = false
+        var failsReadbackAfterNextWrite = false
         var beforeTrackRead: (@Sendable () -> Void)?
     }
 
@@ -69,6 +70,11 @@ final class FakeSpotify: SpotifyControlling {
         set { state.withLock { $0.rejectsWrites = newValue } }
     }
 
+    var failsReadbackAfterNextWrite: Bool {
+        get { state.withLock { $0.failsReadbackAfterNextWrite } }
+        set { state.withLock { $0.failsReadbackAfterNextWrite = newValue } }
+    }
+
     var soundVolume: Int {
         get {
             state.withLock { s in
@@ -81,6 +87,10 @@ final class FakeSpotify: SpotifyControlling {
             state.withLock {
                 if !$0.rejectsWrites { $0.volume = newValue }
                 $0.volumeWrites.append(newValue)
+                if $0.failsReadbackAfterNextWrite {
+                    $0.failsReadback = true
+                    $0.failsReadbackAfterNextWrite = false
+                }
             }
         }
     }

@@ -258,6 +258,29 @@ struct AdMuterTests {
 
 struct AdMuterRestoreRetryTests {
 
+    @Test("An unreadable restore reply is retried on the next poll", arguments: [false, true])
+    func unreadableRestoreRetries(switchOff: Bool) {
+        let fake = FakeSpotify()
+        let muter = AdMuter(spotify: fake)
+        muter.apply(adPlaying: true)
+
+        fake.rejectsWrites = true
+        fake.failsReadbackAfterNextWrite = true
+        if switchOff {
+            muter.isOn = false
+        } else {
+            muter.apply(adPlaying: false)
+        }
+
+        fake.rejectsWrites = false
+        fake.failsReadback = false
+        muter.apply(adPlaying: false)
+
+        #expect(fake.soundVolume == 70)
+        #expect(fake.volumeWrites == [1, 70, 70])
+        #expect(!muter.isMuting)
+    }
+
     @Test("A restore that does not take is retried, not abandoned")
     func failedRestoreRetries() {
         // Seen live: the ad ended, the restore write was rejected, the saved
