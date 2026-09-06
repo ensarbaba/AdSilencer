@@ -23,8 +23,6 @@ final class AdMuter: Sendable {
         volume >= 0 && volume <= muteLevel
     }
 
-    static func isSilentForTests(_ volume: Int) -> Bool { isSilent(volume) }
-
     private enum Phase {
         /// Not muting.
         case idle

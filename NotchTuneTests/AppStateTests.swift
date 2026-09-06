@@ -67,7 +67,7 @@ struct AppStateTests {
         state.isOn = false
         #expect(!state.isMuting)
         state.isOn = true
-        #expect(await waitFor { state.isMuting && AdMuter.isSilentForTests(fake.soundVolume) })
+        #expect(await waitFor { state.isMuting && fake.soundVolume == 1 })
     }
 
     @Test("An ad found by polling is muted, and the music comes back after")
@@ -79,7 +79,7 @@ struct AppStateTests {
         state.start()
         #expect(await waitFor { state.snapshot.track == TrackInfo.song() })
         fake.track = .ad()
-        #expect(await waitFor(5) { state.isMuting && AdMuter.isSilentForTests(fake.soundVolume) })
+        #expect(await waitFor(5) { state.isMuting && fake.soundVolume == 1 })
         fake.track = .song()
         #expect(await waitFor(5) { !state.isMuting && fake.soundVolume == 70 })
     }
@@ -116,7 +116,7 @@ struct AppStateTests {
         defer { state.shutdown() }
         state.start()
 
-        #expect(await waitFor(5) { AdMuter.isSilentForTests(fake.soundVolume) })
+        #expect(await waitFor(5) { fake.soundVolume == 1 })
 
         state.isOn = false
         #expect(fake.soundVolume == 65)
@@ -130,7 +130,7 @@ struct AppStateTests {
         let state = makeState(fake)
         state.start()
 
-        #expect(await waitFor(5) { AdMuter.isSilentForTests(fake.soundVolume) })
+        #expect(await waitFor(5) { fake.soundVolume == 1 })
 
         state.shutdown()
         #expect(fake.soundVolume == 85)
