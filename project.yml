@@ -1,4 +1,4 @@
-name: NotchTune
+name: AdSilencer
 
 options:
   bundleIdPrefix: com.ensarbaba
@@ -15,18 +15,18 @@ settings:
     DEAD_CODE_STRIPPING: YES
 
 targets:
-  NotchTune:
+  AdSilencer:
     type: application
     platform: macOS
     sources:
-      - path: NotchTune
+      - path: AdSilencer
     dependencies:
       - sdk: ScriptingBridge.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ensarbaba.NotchTune
-        PRODUCT_NAME: NotchTune
-        INFOPLIST_FILE: NotchTune/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.ensarbaba.AdSilencer
+        PRODUCT_NAME: AdSilencer
+        INFOPLIST_FILE: AdSilencer/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Personal build. Ad-hoc signed.
@@ -37,14 +37,14 @@ targets:
         ENABLE_APP_SANDBOX: NO
         COMBINE_HIDPI_IMAGES: YES
 
-  NotchTuneTests:
+  AdSilencerTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: NotchTuneTests
+      - path: AdSilencerTests
     dependencies:
-      - target: NotchTune
+      - target: AdSilencer
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ensarbaba.NotchTuneTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.ensarbaba.AdSilencerTests
         GENERATE_INFOPLIST_FILE: YES

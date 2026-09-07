@@ -1,6 +1,6 @@
 //
 //  TrackInfo.swift
-//  NotchTune
+//  AdSilencer
 //
 
 /// The item Spotify is currently playing.

@@ -1,10 +1,10 @@
 //
 //  TrackInfoTests.swift
-//  NotchTuneTests
+//  AdSilencerTests
 //
 
 import Testing
-@testable import NotchTune
+@testable import AdSilencer
 
 struct TrackInfoTests {
 

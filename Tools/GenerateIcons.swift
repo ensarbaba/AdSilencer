@@ -1,6 +1,6 @@
 //
 //  GenerateIcons.swift
-//  NotchTune
+//  AdSilencer
 //
 //  Draws the app icon and the menu bar glyphs, then writes every size as PNG.
 //  Run with:  swift Tools/GenerateIcons.swift
@@ -332,9 +332,9 @@ func write(_ rep: NSBitmapImageRep, to path: String) {
 }
 
 let root = FileManager.default.currentDirectoryPath
-let appIconDir = "\(root)/NotchTune/Assets.xcassets/AppIcon.appiconset"
-let onDir = "\(root)/NotchTune/Assets.xcassets/MenuBarOn.imageset"
-let offDir = "\(root)/NotchTune/Assets.xcassets/MenuBarOff.imageset"
+let appIconDir = "\(root)/AdSilencer/Assets.xcassets/AppIcon.appiconset"
+let onDir = "\(root)/AdSilencer/Assets.xcassets/MenuBarOn.imageset"
+let offDir = "\(root)/AdSilencer/Assets.xcassets/MenuBarOff.imageset"
 
 print("app icon:")
 for size in [16, 32, 64, 128, 256, 512, 1024] {

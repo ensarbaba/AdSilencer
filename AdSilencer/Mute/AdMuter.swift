@@ -1,6 +1,6 @@
 //
 //  AdMuter.swift
-//  NotchTune
+//  AdSilencer
 //
 //  Mutes Spotify during ads and puts the volume back after.
 //

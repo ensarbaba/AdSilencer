@@ -1,12 +1,12 @@
 //
 //  SpotifyWatcherTests.swift
-//  NotchTuneTests
+//  AdSilencerTests
 //
 
 import Foundation
 import Synchronization
 import Testing
-@testable import NotchTune
+@testable import AdSilencer
 
 /// Collects reported snapshots.
 private final class Recorder: Sendable {

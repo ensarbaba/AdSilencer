@@ -1,6 +1,6 @@
 //
 //  MenuBarView.swift
-//  NotchTune
+//  AdSilencer
 //
 //  The whole interface. The icon and the counter are the only sign the app is
 //  working, since it has no window.
@@ -30,7 +30,7 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Quit NotchTune") {
+        Button("Quit AdSilencer") {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")

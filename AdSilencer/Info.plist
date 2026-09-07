@@ -23,7 +23,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>NotchTune reads the current Spotify track and adjusts Spotify's volume so it can mute ads.</string>
+	<string>AdSilencer reads the current Spotify track and adjusts Spotify's volume so it can mute ads.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
 </dict>

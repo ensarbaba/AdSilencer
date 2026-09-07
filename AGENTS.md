@@ -1,4 +1,4 @@
-# NotchTune
+# AdSilencer
 
 macOS menu bar app. Mutes Spotify audio ads.
 

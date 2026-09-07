@@ -1,6 +1,6 @@
 //
 //  SpotifyScripting.swift
-//  NotchTune
+//  AdSilencer
 //
 //  ScriptingBridge declarations for the Spotify client.
 //

@@ -1,6 +1,6 @@
 //
 //  AppState.swift
-//  NotchTune
+//  AdSilencer
 //
 //  Joins the watcher to the muter and holds what the menu shows.
 //

@@ -1,11 +1,11 @@
 //
 //  TrackInfoFixtures.swift
-//  NotchTuneTests
+//  AdSilencerTests
 //
 //  Sample tracks for tests.
 //
 
-@testable import NotchTune
+@testable import AdSilencer
 
 extension TrackInfo {
     static func song(id: String = "spotify:track:abc", name: String = "Song") -> TrackInfo {

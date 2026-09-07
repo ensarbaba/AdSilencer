@@ -1,6 +1,6 @@
 //
-//  NotchTuneApp.swift
-//  NotchTune
+//  AdSilencerApp.swift
+//  AdSilencer
 //
 //  Menu bar app. LSUIElement, so no Dock icon and no windows.
 //
@@ -9,7 +9,7 @@ import AppKit
 import SwiftUI
 
 @main
-struct NotchTuneApp: App {
+struct AdSilencerApp: App {
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 

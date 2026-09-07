@@ -1,19 +1,19 @@
 //
 //  AppStateTests.swift
-//  NotchTuneTests
+//  AdSilencerTests
 //
 
 import Foundation
 import Synchronization
 import Testing
-@testable import NotchTune
+@testable import AdSilencer
 
 @MainActor
 struct AppStateTests {
 
     /// A defaults store of its own, so tests do not touch real settings.
     private func makeState(_ fake: FakeSpotify) -> AppState {
-        let suite = UserDefaults(suiteName: "notchtune.tests.\(UUID().uuidString)")!
+        let suite = UserDefaults(suiteName: "adsilencer.tests.\(UUID().uuidString)")!
         return AppState(spotify: fake, defaults: suite)
     }
 

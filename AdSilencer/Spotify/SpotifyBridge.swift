@@ -1,6 +1,6 @@
 //
 //  SpotifyBridge.swift
-//  NotchTune
+//  AdSilencer
 //
 //  The only code that talks to Spotify. Everything else depends on
 //  SpotifyControlling and can run against a fake.

@@ -1,6 +1,6 @@
 //
 //  FakeSpotify.swift
-//  NotchTuneTests
+//  AdSilencerTests
 //
 //  Stand-in for the real client. Tests need no running Spotify and change
 //  no audio.
@@ -8,7 +8,7 @@
 
 import Foundation
 import Synchronization
-@testable import NotchTune
+@testable import AdSilencer
 
 /// `Mutex` guards the state, so Swift checks the `Sendable` conformance.
 final class FakeSpotify: SpotifyControlling {

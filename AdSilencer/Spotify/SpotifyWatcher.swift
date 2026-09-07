@@ -1,6 +1,6 @@
 //
 //  SpotifyWatcher.swift
-//  NotchTune
+//  AdSilencer
 //
 //  Reports playback by reading Spotify once a second.
 //
@@ -42,7 +42,7 @@ final class SpotifyWatcher: Sendable {
     }
 
     /// All Spotify reads happen here, so a slow reply cannot block the UI.
-    private let queue = DispatchQueue(label: "com.ensarbaba.NotchTune.spotify")
+    private let queue = DispatchQueue(label: "com.ensarbaba.AdSilencer.spotify")
     private let spotify: SpotifyControlling
     private let onSnapshot: @Sendable (PlaybackSnapshot) -> Void
     private let state = Mutex(State())

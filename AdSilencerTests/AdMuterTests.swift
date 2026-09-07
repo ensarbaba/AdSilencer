@@ -1,11 +1,11 @@
 //
 //  AdMuterTests.swift
-//  NotchTuneTests
+//  AdSilencerTests
 //
 
 import Foundation
 import Testing
-@testable import NotchTune
+@testable import AdSilencer
 
 struct AdMuterTests {
 
