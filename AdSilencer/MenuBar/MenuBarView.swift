@@ -7,6 +7,7 @@
 //
 
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 struct MenuBarView: View {
@@ -27,6 +28,19 @@ struct MenuBarView: View {
 
         Toggle("Mute Spotify ads", isOn: $state.isOn)
         Text("Ads muted: \(state.adsMuted)")
+
+        Divider()
+
+        Toggle("Launch at login", isOn: Binding(
+            get: { state.loginStatus == .enabled },
+            set: { state.setLaunchAtLogin($0) }
+        ))
+
+        if state.loginStatus == .requiresApproval {
+            Button("Open Login Items settings...") {
+                SMAppService.openSystemSettingsLoginItems()
+            }
+        }
 
         Divider()
 

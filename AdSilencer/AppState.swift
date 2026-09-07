@@ -10,6 +10,7 @@
 
 import Foundation
 import Observation
+import ServiceManagement
 import SwiftUI
 
 @MainActor
@@ -33,6 +34,11 @@ final class AppState {
     private(set) var adsMuted: Int
     private(set) var snapshot: PlaybackSnapshot = .idle
     private(set) var isMuting = false
+
+    /// Held rather than read in the menu. A menu built from `MenuBarExtra` is
+    /// cached, so a value read while drawing is never read again and the tick
+    /// stops matching the system.
+    private(set) var loginStatus = SMAppService.mainApp.status
 
     private let spotify: SpotifyControlling
     private let defaults: UserDefaults
@@ -75,6 +81,14 @@ final class AppState {
         muter.isOn = false
         watcher?.stop()
         watcher = nil
+    }
+
+    /// Reads the status back rather than trusting the write, so a refused
+    /// registration leaves the menu showing off.
+    func setLaunchAtLogin(_ on: Bool) {
+        try? on ? SMAppService.mainApp.register()
+                : SMAppService.mainApp.unregister()
+        loginStatus = SMAppService.mainApp.status
     }
 
     private func publish(_ snapshot: PlaybackSnapshot, muting: Bool, mutedAnAd: Bool) {
