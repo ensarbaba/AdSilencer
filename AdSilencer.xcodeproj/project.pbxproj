@@ -54,6 +54,7 @@
 		C12A7DD37498E04F638D5AA4 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		D623F01640CB9968D476CF34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E27214A7D4B70B0E7AE42111 /* AdSilencerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdSilencerApp.swift; sourceTree = "<group>"; };
+		E7FB288E1022FD41CA1CDA55 /* AdSilencer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AdSilencer.entitlements; sourceTree = "<group>"; };
 		EB9EDBB0ECB19543EBB79C23 /* AdSilencer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AdSilencer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F12636A5E3B91BEDF815A2D1 /* SpotifyScriptingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyScriptingTests.swift; sourceTree = "<group>"; };
 		F2C7594AB83831D95DF2F342 /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
@@ -97,6 +98,7 @@
 		10DD43BC447A68F66DA5EE8A /* AdSilencer */ = {
 			isa = PBXGroup;
 			children = (
+				E7FB288E1022FD41CA1CDA55 /* AdSilencer.entitlements */,
 				E27214A7D4B70B0E7AE42111 /* AdSilencerApp.swift */,
 				B23CD3E17F83C786288A2D33 /* AppState.swift */,
 				0F17F8A3E3633359621B0A4D /* Assets.xcassets */,
@@ -381,6 +383,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AdSilencer/AdSilencer.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -469,17 +472,21 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_ENTITLEMENTS = AdSilencer/AdSilencer.entitlements;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 73DA6B7Z6K;
 				ENABLE_APP_SANDBOX = NO;
-				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AdSilencer/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				OTHER_CODE_SIGN_FLAGS = "--timestamp";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ensarbaba.AdSilencer;
 				PRODUCT_NAME = AdSilencer;
 				SDKROOT = macosx;

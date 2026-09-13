@@ -6,3 +6,6 @@ xcuserdata/
 *.xcscmblueprint
 *.xccheckout
 *.profraw
+
+# Release artifacts
+build/

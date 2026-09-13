@@ -16,6 +16,9 @@ final class FakeSpotify: SpotifyControlling {
     private struct State {
         var isRunning = true
         var access: SpotifyAccess = .ok
+        var accessRequests = 0
+        var playbackReads = 0
+        var onAccessRequest: (@Sendable () -> SpotifyAccess)?
         var playerState: SpotifyPlayerState = .playing
         var track: TrackInfo?
         var volume = 70
@@ -39,8 +42,31 @@ final class FakeSpotify: SpotifyControlling {
         set { state.withLock { $0.access = newValue } }
     }
 
+    var accessRequests: Int { state.withLock { $0.accessRequests } }
+    var playbackReads: Int { state.withLock { $0.playbackReads } }
+
+    var onAccessRequest: (@Sendable () -> SpotifyAccess)? {
+        get { state.withLock { $0.onAccessRequest } }
+        set { state.withLock { $0.onAccessRequest = newValue } }
+    }
+
+    func requestAccess() -> SpotifyAccess {
+        let handler = state.withLock {
+            $0.accessRequests += 1
+            return $0.onAccessRequest
+        }
+        let result = handler?() ?? access
+        access = result
+        return result
+    }
+
     var playerState: SpotifyPlayerState {
-        get { state.withLock { $0.playerState } }
+        get {
+            state.withLock {
+                $0.playbackReads += 1
+                return $0.playerState
+            }
+        }
         set { state.withLock { $0.playerState = newValue } }
     }
 
@@ -107,6 +133,9 @@ final class FakeSpotify: SpotifyControlling {
 
     func currentTrack() -> TrackInfo? {
         beforeTrackRead?()
-        return state.withLock { $0.track }
+        return state.withLock {
+            $0.playbackReads += 1
+            return $0.track
+        }
     }
 }

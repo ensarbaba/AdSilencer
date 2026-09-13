@@ -28,7 +28,7 @@ enum SpotifyPlayerState: Equatable {
 enum SpotifyAccess: Equatable {
     /// Permitted, or already granted.
     case ok
-    /// The user has never been asked. The first Apple event triggers the prompt.
+    /// Consent is needed before playback can be read.
     case undetermined
     /// The user denied it in System Settings > Privacy & Security > Automation.
     case denied
@@ -43,6 +43,7 @@ protocol SpotifyControlling: AnyObject, Sendable {
     /// A negative reading means Spotify could not report its volume.
     var soundVolume: Int { get set }
 
+    func requestAccess() -> SpotifyAccess
     func currentTrack() -> TrackInfo?
 }
 
@@ -67,6 +68,15 @@ final class SpotifyBridge: SpotifyControlling {
     /// `playerState` returns 0, which maps to `.stopped`, and `currentTrack`
     /// returns nil.
     var access: SpotifyAccess {
+        determineAccess(askUserIfNeeded: false)
+    }
+
+    /// Waits for consent on the watcher queue, without an Apple-event timeout.
+    func requestAccess() -> SpotifyAccess {
+        determineAccess(askUserIfNeeded: true)
+    }
+
+    private func determineAccess(askUserIfNeeded: Bool) -> SpotifyAccess {
         guard isRunning else { return .unavailable }
 
         // Names Spotify by its bundle id, the way Apple events address an app.
@@ -76,9 +86,9 @@ final class SpotifyBridge: SpotifyControlling {
         else { return .unavailable }
         defer { AEDisposeDesc(&target) }
 
-        // Asks the system whether we may control Spotify. Sends nothing.
-        // false means report that consent is needed instead of prompting now.
-        switch AEDeterminePermissionToAutomateTarget(&target, typeWildCard, typeWildCard, false) {
+        switch AEDeterminePermissionToAutomateTarget(
+            &target, typeWildCard, typeWildCard, askUserIfNeeded
+        ) {
         case noErr: return .ok
         case OSStatus(errAEEventWouldRequireUserConsent): return .undetermined
         case OSStatus(errAEEventNotPermitted): return .denied
@@ -93,6 +103,8 @@ final class SpotifyBridge: SpotifyControlling {
         guard isRunning else { return nil }
         guard let app = SBApplication(bundleIdentifier: Self.bundleID) else { return nil }
         app.timeout = Self.eventTimeoutTicks
+        // Only requestAccess() may prompt for consent.
+        app.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
         return app
     }
 

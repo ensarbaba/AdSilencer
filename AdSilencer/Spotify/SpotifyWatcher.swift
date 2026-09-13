@@ -39,6 +39,7 @@ final class SpotifyWatcher: Sendable {
     private struct State {
         var timer: DispatchSourceTimer?
         var running = false
+        var requestedAccess = false
     }
 
     /// All Spotify reads happen here, so a slow reply cannot block the UI.
@@ -58,7 +59,10 @@ final class SpotifyWatcher: Sendable {
 
     func start() {
         stop()
-        state.withLock { $0.running = true }
+        state.withLock {
+            $0.running = true
+            $0.requestedAccess = false
+        }
 
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(
@@ -96,10 +100,32 @@ final class SpotifyWatcher: Sendable {
     }
 
     private func snapshot() -> PlaybackSnapshot {
-        guard spotify.isRunning else { return .idle }
+        guard spotify.isRunning else {
+            state.withLock { $0.requestedAccess = false }
+            return .idle
+        }
+        var access = spotify.access
+        if access == .undetermined {
+            let shouldRequest = state.withLock { state in
+                guard state.running, !state.requestedAccess else { return false }
+                state.requestedAccess = true
+                return true
+            }
+            if shouldRequest {
+                onSnapshot(PlaybackSnapshot(
+                    isRunning: true, access: access, state: .stopped, track: nil
+                ))
+                access = spotify.requestAccess()
+            }
+        }
+        guard access == .ok, state.withLock({ $0.running }) else {
+            return PlaybackSnapshot(
+                isRunning: true, access: access, state: .stopped, track: nil
+            )
+        }
         return PlaybackSnapshot(
             isRunning: true,
-            access: spotify.access,
+            access: access,
             state: spotify.playerState,
             track: spotify.currentTrack()
         )
