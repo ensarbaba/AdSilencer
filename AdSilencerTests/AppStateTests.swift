@@ -147,15 +147,26 @@ struct AppStateTests {
         #expect(await waitFor { state.statusLine == "No permission to control Spotify" })
     }
 
-    @Test("The status line names the track while playing")
-    func statusShowsTrack() async {
+    @Test("The status line waits while permission is unsettled")
+    func statusShowsWaitingForPermission() async {
+        let fake = FakeSpotify()
+        fake.access = .undetermined
+        let state = makeState(fake)
+        defer { state.shutdown() }
+        state.start()
+
+        #expect(await waitFor { state.statusLine == "Waiting for permission" })
+    }
+
+    @Test("The status line says Spotify is playing")
+    func statusShowsPlaying() async {
         let fake = FakeSpotify()
         fake.track = .song(id: "spotify:track:x", name: "Some Song")
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()
 
-        #expect(await waitFor { state.statusLine == "Some Song" })
+        #expect(await waitFor { state.statusLine == "Spotify is Playing" })
     }
 
     @Test("Switching muting off drops the slash from the menu bar icon")

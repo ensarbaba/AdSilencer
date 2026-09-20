@@ -40,10 +40,14 @@ final class SpotifyWatcher: Sendable {
         var timer: DispatchSourceTimer?
         var running = false
         var requestedAccess = false
+        var permissionInFlight = false
+        var permissionStatus: SpotifyAccess?
     }
 
-    /// All Spotify reads happen here, so a slow reply cannot block the UI.
+    /// Playback reads happen here, so a slow reply cannot block the UI.
     private let queue = DispatchQueue(label: "com.ensarbaba.AdSilencer.spotify")
+    /// Automation permission checks can wait on a consent dialog.
+    private let permissionQueue = DispatchQueue(label: "com.ensarbaba.AdSilencer.spotify.permission")
     private let spotify: SpotifyControlling
     private let onSnapshot: @Sendable (PlaybackSnapshot) -> Void
     private let state = Mutex(State())
@@ -62,6 +66,7 @@ final class SpotifyWatcher: Sendable {
         state.withLock {
             $0.running = true
             $0.requestedAccess = false
+            $0.permissionStatus = nil
         }
 
         let timer = DispatchSource.makeTimerSource(queue: queue)
@@ -101,33 +106,58 @@ final class SpotifyWatcher: Sendable {
 
     private func snapshot() -> PlaybackSnapshot {
         guard spotify.isRunning else {
-            state.withLock { $0.requestedAccess = false }
+            state.withLock {
+                $0.requestedAccess = false
+                $0.permissionStatus = nil
+            }
             return .idle
         }
-        var access = spotify.access
-        if access == .undetermined {
-            let shouldRequest = state.withLock { state in
-                guard state.running, !state.requestedAccess else { return false }
-                state.requestedAccess = true
+
+        beginPermissionProbe()
+        let permissionStatus = state.withLock { $0.permissionStatus }
+        if permissionStatus == .ok {
+            return PlaybackSnapshot(
+                isRunning: true,
+                access: .ok,
+                state: spotify.playerState,
+                track: spotify.currentTrack()
+            )
+        }
+
+        return PlaybackSnapshot(
+            isRunning: true,
+            access: permissionStatus ?? .undetermined,
+            state: .stopped,
+            track: nil
+        )
+    }
+
+    private func beginPermissionProbe() {
+        let shouldProbe = state.withLock { s -> Bool in
+            guard s.running, !s.permissionInFlight else { return false }
+            s.permissionInFlight = true
+            return true
+        }
+        if shouldProbe {
+            permissionQueue.async { [weak self] in self?.finishPermission() }
+        }
+    }
+
+    private func finishPermission() {
+        var result = spotify.access
+        if result == .undetermined {
+            let shouldRequest = state.withLock { s -> Bool in
+                guard s.running, !s.requestedAccess else { return false }
+                s.requestedAccess = true
                 return true
             }
             if shouldRequest {
-                onSnapshot(PlaybackSnapshot(
-                    isRunning: true, access: access, state: .stopped, track: nil
-                ))
-                access = spotify.requestAccess()
+                result = spotify.requestAccess()
             }
         }
-        guard access == .ok, state.withLock({ $0.running }) else {
-            return PlaybackSnapshot(
-                isRunning: true, access: access, state: .stopped, track: nil
-            )
+        state.withLock { s in
+            s.permissionStatus = result
+            s.permissionInFlight = false
         }
-        return PlaybackSnapshot(
-            isRunning: true,
-            access: access,
-            state: spotify.playerState,
-            track: spotify.currentTrack()
-        )
     }
 }

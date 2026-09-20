@@ -79,7 +79,6 @@ final class AdMuter: Sendable {
 
             switch s.phase {
             case .idle:
-                guard spotify.access == .ok else { return }
                 let current = spotify.soundVolume
                 guard current >= 0 else { return }
                 // Only remember a volume worth returning to. Restoring an

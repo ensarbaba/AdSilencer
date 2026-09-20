@@ -18,7 +18,7 @@ struct MenuBarView: View {
     var body: some View {
         Text(state.statusLine)
 
-        if state.snapshot.access == .denied {
+        if state.snapshot.access == .denied || state.snapshot.access == .undetermined {
             Button("Open Automation settings...") {
                 openAutomationSettings()
             }

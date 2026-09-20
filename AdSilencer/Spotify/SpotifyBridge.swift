@@ -71,7 +71,7 @@ final class SpotifyBridge: SpotifyControlling {
         determineAccess(askUserIfNeeded: false)
     }
 
-    /// Waits for consent on the watcher queue, without an Apple-event timeout.
+    /// Waits for the user's Automation decision on the permission queue.
     func requestAccess() -> SpotifyAccess {
         determineAccess(askUserIfNeeded: true)
     }

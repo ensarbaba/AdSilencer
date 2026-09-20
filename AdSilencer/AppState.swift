@@ -112,7 +112,7 @@ final class AppState {
         }
         if isMuting { return "Muting ad" }
         switch snapshot.state {
-        case .playing: return snapshot.track?.displayTitle ?? "Playing"
+        case .playing: return "Spotify is Playing"
         case .paused: return "Paused"
         case .stopped: return "Stopped"
         }
