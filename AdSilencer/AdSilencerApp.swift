@@ -4,6 +4,9 @@
 //
 //  Menu bar app. LSUIElement, so no Dock icon and no windows.
 //
+//  Quitting puts Spotify's volume back, including a kill from Xcode or
+//  the shell. Otherwise an ad in progress would leave Spotify silent.
+//
 
 import AppKit
 import SwiftUI
