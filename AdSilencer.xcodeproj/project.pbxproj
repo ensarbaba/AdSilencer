@@ -24,7 +24,6 @@
 		8880B9D59E702CCD077AB6E3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0F17F8A3E3633359621B0A4D /* Assets.xcassets */; };
 		A0D260DD7980A737B2C6C829 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12A7DD37498E04F638D5AA4 /* MenuBarView.swift */; };
 		A3A755FFEA700FE63B65FDAD /* SpotifyWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7368BF6BE4B3426414C9D4 /* SpotifyWatcher.swift */; };
-		F4C2FDD0FFF24566AA8B8FB9 /* TrackInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = F87D83383363ABB6CD3B1E59 /* TrackInfo.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,7 +58,6 @@
 		F12636A5E3B91BEDF815A2D1 /* SpotifyScriptingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyScriptingTests.swift; sourceTree = "<group>"; };
 		F2C7594AB83831D95DF2F342 /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
 		F5910DEC1D5EDB5088367E03 /* TrackInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfoTests.swift; sourceTree = "<group>"; };
-		F87D83383363ABB6CD3B1E59 /* TrackInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfo.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,7 +88,6 @@
 				83EB1E44464CC322E6C4C780 /* SpotifyBridge.swift */,
 				2E46F1978FAA7418B84BB805 /* SpotifyScripting.swift */,
 				7B7368BF6BE4B3426414C9D4 /* SpotifyWatcher.swift */,
-				F87D83383363ABB6CD3B1E59 /* TrackInfo.swift */,
 			);
 			path = Spotify;
 			sourceTree = "<group>";
@@ -255,7 +252,6 @@
 				3B80FF5D1044F81C74150C41 /* SpotifyBridge.swift in Sources */,
 				2A7A044D7B9AA903B9FE6CD6 /* SpotifyScripting.swift in Sources */,
 				A3A755FFEA700FE63B65FDAD /* SpotifyWatcher.swift in Sources */,
-				F4C2FDD0FFF24566AA8B8FB9 /* TrackInfo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

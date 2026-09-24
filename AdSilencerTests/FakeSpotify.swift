@@ -17,18 +17,19 @@ final class FakeSpotify: SpotifyControlling {
         var isRunning = true
         var access: SpotifyAccess = .ok
         var accessRequests = 0
-        var playbackReads = 0
+        var playerStateReads = 0
+        var trackIDReads = 0
         var onAccessCheck: (@Sendable () -> Void)?
         var onAccessRequest: (@Sendable () -> SpotifyAccess)?
         var playerState: SpotifyPlayerState = .playing
-        var track: TrackInfo?
+        var track: String?
         var volume = 70
         var volumeWrites: [Int] = []
         var emulatesReadbackDrift = false
         var rejectsWrites = false
         var failsReadback = false
         var failsReadbackAfterNextWrite = false
-        var beforeTrackRead: (@Sendable () -> Void)?
+        var beforeTrackIDRead: (@Sendable () -> Void)?
     }
 
     private let state = Mutex(State())
@@ -48,7 +49,11 @@ final class FakeSpotify: SpotifyControlling {
     }
 
     var accessRequests: Int { state.withLock { $0.accessRequests } }
-    var playbackReads: Int { state.withLock { $0.playbackReads } }
+    var playerStateReads: Int { state.withLock { $0.playerStateReads } }
+    var trackIDReads: Int { state.withLock { $0.trackIDReads } }
+    var playbackReads: Int {
+        state.withLock { $0.playerStateReads + $0.trackIDReads }
+    }
 
     var onAccessCheck: (@Sendable () -> Void)? {
         get { state.withLock { $0.onAccessCheck } }
@@ -73,14 +78,14 @@ final class FakeSpotify: SpotifyControlling {
     var playerState: SpotifyPlayerState {
         get {
             state.withLock {
-                $0.playbackReads += 1
+                $0.playerStateReads += 1
                 return $0.playerState
             }
         }
         set { state.withLock { $0.playerState = newValue } }
     }
 
-    var track: TrackInfo? {
+    var track: String? {
         get { state.withLock { $0.track } }
         set { state.withLock { $0.track = newValue } }
     }
@@ -136,15 +141,15 @@ final class FakeSpotify: SpotifyControlling {
         state.withLock { $0.volume = value }
     }
 
-    var beforeTrackRead: (@Sendable () -> Void)? {
-        get { state.withLock { $0.beforeTrackRead } }
-        set { state.withLock { $0.beforeTrackRead = newValue } }
+    var beforeTrackIDRead: (@Sendable () -> Void)? {
+        get { state.withLock { $0.beforeTrackIDRead } }
+        set { state.withLock { $0.beforeTrackIDRead = newValue } }
     }
 
-    func currentTrack() -> TrackInfo? {
-        beforeTrackRead?()
+    func currentTrackID() -> String? {
+        beforeTrackIDRead?()
         return state.withLock {
-            $0.playbackReads += 1
+            $0.trackIDReads += 1
             return $0.track
         }
     }

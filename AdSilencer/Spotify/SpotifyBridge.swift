@@ -44,19 +44,19 @@ protocol SpotifyControlling: AnyObject, Sendable {
     var soundVolume: Int { get set }
 
     func requestAccess() -> SpotifyAccess
-    func currentTrack() -> TrackInfo?
+    func currentTrackID() -> String?
 }
 
-/// Holds no state, so it is safe to share across queues without a lock.
-///
-/// Each call owns its ScriptingBridge application and error state.
-final class SpotifyBridge: SpotifyControlling {
+/// Serializes one ScriptingBridge application across callers.
+final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
 
     static let bundleID = "com.spotify.client"
 
-    /// Timeout for one event, in ticks of 1/60 s. A normal reply takes about
-    /// 33 ms. Two seconds is a limit for when Spotify stops responding.
+    /// How long one Apple event may take. Apple counts this in 1/60ths of
+    /// a second, so 120 is two seconds. A normal reply takes about 33 ms.
     private static let eventTimeoutTicks = 120
+    private let applicationLock = NSLock()
+    private var application: SBApplication?
 
     var isRunning: Bool {
         !NSRunningApplication
@@ -96,45 +96,63 @@ final class SpotifyBridge: SpotifyControlling {
         }
     }
 
-    /// Nil while Spotify is not running. Any message sent to an SBApplication
-    /// launches the target app, so the guard keeps this app from starting
-    /// Spotify.
-    private func makeApp() -> SpotifyScriptingApplication? {
-        guard isRunning else { return nil }
-        guard let app = SBApplication(bundleIdentifier: Self.bundleID) else { return nil }
-        app.timeout = Self.eventTimeoutTicks
-        // Only requestAccess() may prompt for consent.
-        app.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
-        return app
+    /// The running target application, confined by `application`.
+    private func withApp<Result>(
+        unavailable: Result,
+        _ body: (SBApplication) -> Result
+    ) -> Result {
+        applicationLock.lock()
+        defer { applicationLock.unlock() }
+        guard isRunning else {
+            application = nil
+            return unavailable
+        }
+        if application == nil {
+            guard let app = SBApplication(bundleIdentifier: Self.bundleID) else {
+                return unavailable
+            }
+            app.timeout = Self.eventTimeoutTicks
+            // sendMode is a bit mask. The default already waits for a reply. This bit
+            // fails the event if Automation is not granted, instead of showing the dialog.
+            // Only requestAccess() may prompt.
+            app.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
+            application = app
+        }
+        guard let application else { return unavailable }
+        return body(application)
     }
 
     var playerState: SpotifyPlayerState {
-        guard let code = makeApp()?.playerState else { return .stopped }
-        return SpotifyPlayerState(code: code)
+        withApp(unavailable: .stopped) { app in
+            SpotifyPlayerState(code: (app as SpotifyScriptingApplication).playerState ?? 0)
+        }
     }
 
     var soundVolume: Int {
         get {
-            guard let app = makeApp() as? SBApplication else { return -1 }
-            let errors = SpotifyEventErrors()
-            app.delegate = errors
-            let volume = (app as SpotifyScriptingApplication).soundVolume
-            return errors.failed ? -1 : (volume ?? -1)
+            withApp(unavailable: -1) { app in
+                let errors = SpotifyEventErrors()
+                app.delegate = errors
+                defer { app.delegate = nil }
+                let volume = (app as SpotifyScriptingApplication).soundVolume
+                return errors.failed ? -1 : (volume ?? -1)
+            }
         }
-        set { makeApp()?.setSoundVolume?(max(0, min(100, newValue))) }
+        set {
+            withApp(unavailable: ()) { app in
+                (app as SpotifyScriptingApplication).setSoundVolume?(max(0, min(100, newValue)))
+            }
+        }
     }
 
-    func currentTrack() -> TrackInfo? {
-        // Only the id and display name are needed.
-        guard let track = makeApp()?.currentTrack else { return nil }
-        // Spotify returns a live object even when nothing is loaded. A missing
-        // or empty id is how that appears.
-        guard let id = track.id, !id.isEmpty else { return nil }
-
-        return TrackInfo(
-            id: id,
-            name: track.name ?? ""
-        )
+    func currentTrackID() -> String? {
+        withApp(unavailable: nil as String?) { app in
+            // Spotify returns a live object even when nothing is loaded. A missing
+            // or empty id is how that appears.
+            guard let id = (app as SpotifyScriptingApplication).currentTrack?.id, !id.isEmpty
+            else { return nil }
+            return id
+        }
     }
 }
 

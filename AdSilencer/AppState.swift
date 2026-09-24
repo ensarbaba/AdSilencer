@@ -32,7 +32,7 @@ final class AppState {
     }
 
     private(set) var adsMuted: Int
-    private(set) var snapshot: PlaybackSnapshot = .idle
+    private(set) var playback: Playback = .idle
     private(set) var isMuting = false
 
     /// Held rather than read in the menu. A menu built from `MenuBarExtra` is
@@ -62,13 +62,13 @@ final class AppState {
     func start() {
         let muter = self.muter
 
-        let watcher = SpotifyWatcher(spotify: spotify) { [weak self] snapshot in
+        let watcher = SpotifyWatcher(spotify: spotify) { [weak self] playback in
             // Watcher queue. Mute first, publish after.
-            let mutedAnAd = muter.apply(adPlaying: snapshot.isAdPlaying)
+            let mutedAnAd = muter.apply(adPlaying: playback.isAdPlaying)
             let muting = muter.isMuting
 
             Task { @MainActor in
-                self?.publish(snapshot, muting: muting, mutedAnAd: mutedAnAd)
+                self?.publish(playback, muting: muting, mutedAnAd: mutedAnAd)
             }
         }
 
@@ -91,8 +91,8 @@ final class AppState {
         loginStatus = SMAppService.mainApp.status
     }
 
-    private func publish(_ snapshot: PlaybackSnapshot, muting: Bool, mutedAnAd: Bool) {
-        self.snapshot = snapshot
+    private func publish(_ playback: Playback, muting: Bool, mutedAnAd: Bool) {
+        self.playback = playback
         self.isMuting = isOn && muting
         if mutedAnAd {
             adsMuted += 1
@@ -103,15 +103,15 @@ final class AppState {
     // MARK: - Menu
 
     var statusLine: String {
-        guard snapshot.isRunning else { return "Spotify not running" }
-        switch snapshot.access {
+        guard playback.isRunning else { return "Spotify not running" }
+        switch playback.access {
         case .denied: return "No permission to control Spotify"
         case .undetermined: return "Waiting for permission"
         case .unavailable: return "Spotify not reachable"
         case .ok: break
         }
         if isMuting { return "Muting ad" }
-        switch snapshot.state {
+        switch playback.state {
         case .playing: return "Spotify is Playing"
         case .paused: return "Paused"
         case .stopped: return "Stopped"

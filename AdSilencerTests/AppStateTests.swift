@@ -35,13 +35,13 @@ struct AppStateTests {
         fake.track = .ad()
         let entered = Mutex(false)
         let release = DispatchSemaphore(value: 0)
-        fake.beforeTrackRead = {
+        fake.beforeTrackIDRead = {
             entered.withLock { $0 = true }
             release.wait()
         }
         let state = makeState(fake)
         defer {
-            fake.beforeTrackRead = nil
+            fake.beforeTrackIDRead = nil
             release.signal()
             state.shutdown()
         }
@@ -51,7 +51,7 @@ struct AppStateTests {
         release.signal()
 
         // Publishing happens after the blocked read has reached the muter.
-        #expect(await waitFor { state.snapshot.track == TrackInfo.ad() })
+        #expect(await waitFor { state.playback.trackID == .ad() })
         #expect(fake.soundVolume == 70)
         #expect(!state.isMuting)
     }
@@ -77,7 +77,7 @@ struct AppStateTests {
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()
-        #expect(await waitFor { state.snapshot.track == TrackInfo.song() })
+        #expect(await waitFor { state.playback.trackID == .song() })
         fake.track = .ad()
         #expect(await waitFor(5) { state.isMuting && fake.soundVolume == 1 })
         fake.track = .song()
@@ -161,7 +161,7 @@ struct AppStateTests {
     @Test("The status line says Spotify is playing")
     func statusShowsPlaying() async {
         let fake = FakeSpotify()
-        fake.track = .song(id: "spotify:track:x", name: "Some Song")
+        fake.track = .song(id: "spotify:track:x")
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()

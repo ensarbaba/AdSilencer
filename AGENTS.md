@@ -34,7 +34,7 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
   Restoring a saved volume without correcting for this walks the volume down on
   every ad.
 - Each property read is a separate Apple event costing roughly 33 ms, because
-  Spotify services them on an approximately 30 Hz loop. Five properties cost
+  Spotify services them about 30 times a second. Five properties cost
   about 165 ms.
 - Without the Automation grant, `playerState` returns 0 and `currentTrack`
   returns nil, which is indistinguishable from stopped and idle. AppleScript
@@ -53,5 +53,5 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
 
 Swift Testing, not XCTest.
 
-Tests drive `FakeSpotify` and wait for the 1 Hz poll to notice, which is the
-same path a real ad takes. Nothing can force an ad instantly.
+Tests drive `FakeSpotify` through the 100 ms track ID detector. Player state and
+permission refresh once a second.

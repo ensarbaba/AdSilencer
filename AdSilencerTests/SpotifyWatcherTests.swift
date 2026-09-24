@@ -8,12 +8,12 @@ import Synchronization
 import Testing
 @testable import AdSilencer
 
-/// Collects reported snapshots.
+/// Collects playback readings from the watcher.
 private final class Recorder: Sendable {
-    private let box = Mutex([PlaybackSnapshot]())
+    private let box = Mutex([Playback]())
 
-    func record(_ shot: PlaybackSnapshot) { box.withLock { $0.append(shot) } }
-    var all: [PlaybackSnapshot] { box.withLock { $0 } }
+    func record(_ shot: Playback) { box.withLock { $0.append(shot) } }
+    var all: [Playback] { box.withLock { $0 } }
     var count: Int { box.withLock { $0.count } }
 
     func waitCount(_ target: Int, timeout: TimeInterval = 3) async -> Bool {
@@ -22,7 +22,7 @@ private final class Recorder: Sendable {
 
     func waitFor(
         _ timeout: TimeInterval = 3,
-        _ match: @escaping @Sendable (PlaybackSnapshot) -> Bool
+        _ match: @escaping @Sendable (Playback) -> Bool
     ) async -> Bool {
         await poll(timeout) { self.all.contains(where: match) }
     }
@@ -37,30 +37,30 @@ private final class Recorder: Sendable {
     }
 }
 
-struct PlaybackSnapshotTests {
+struct PlaybackTests {
 
     @Test("An ad counts as playing while paused")
     func adSurvivesPause() {
         // Otherwise a pause would unmute, then mute again on resume.
-        let shot = PlaybackSnapshot(isRunning: true, access: .ok, state: .paused, track: .ad())
+        let shot = Playback(isRunning: true, access: .ok, state: .paused, trackID: .ad())
         #expect(shot.isAdPlaying)
     }
 
     @Test("A stopped ad does not count")
     func adEndsWhenStopped() {
-        let shot = PlaybackSnapshot(isRunning: true, access: .ok, state: .stopped, track: .ad())
+        let shot = Playback(isRunning: true, access: .ok, state: .stopped, trackID: .ad())
         #expect(shot.isAdPlaying == false)
     }
 
     @Test("A song is never an ad")
     func songIsNotAd() {
-        let shot = PlaybackSnapshot(isRunning: true, access: .ok, state: .playing, track: .song())
+        let shot = Playback(isRunning: true, access: .ok, state: .playing, trackID: .song())
         #expect(shot.isAdPlaying == false)
     }
 
     @Test("Nothing playing is not an ad")
     func idleIsNotAd() {
-        #expect(PlaybackSnapshot.idle.isAdPlaying == false)
+        #expect(Playback.idle.isAdPlaying == false)
     }
 }
 
@@ -79,7 +79,7 @@ struct SpotifyWatcherTests {
         defer { watcher.stop() }
 
         watcher.start()
-        #expect(await recorder.waitFor { $0.track == TrackInfo.song() })
+        #expect(await recorder.waitFor { $0.trackID == String.song() })
     }
 
     @Test("Stopping ends reads")
@@ -94,15 +94,23 @@ struct SpotifyWatcherTests {
 
         watcher.stop()
         let after = recorder.count
+        let stateReads = fake.playerStateReads
+        let idReads = fake.trackIDReads
 
-        // Long enough for several timer ticks, none of which may report.
+        // Long enough for several polls, none of which may report.
         try await Task.sleep(for: .milliseconds(2500))
 
         #expect(recorder.count == after)
+        #expect(fake.playerStateReads == stateReads)
+        #expect(fake.trackIDReads == idReads)
     }
 }
 
 struct SpotifyWatcherPollingTests {
+
+    private func makeWatcher(_ fake: FakeSpotify, _ recorder: Recorder) -> SpotifyWatcher {
+        SpotifyWatcher(spotify: fake) { recorder.record($0) }
+    }
 
     @Test("A change made with no signal is still noticed")
     func pollingNoticesChanges() async {
@@ -112,7 +120,7 @@ struct SpotifyWatcherPollingTests {
         let fake = FakeSpotify()
         fake.track = .song()
         let recorder = Recorder()
-        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        let watcher = makeWatcher(fake, recorder)
         defer { watcher.stop() }
 
         watcher.start()
@@ -121,8 +129,87 @@ struct SpotifyWatcherPollingTests {
         fake.track = .ad()
         #expect(await recorder.waitFor(5) { $0.isAdPlaying })
 
-        fake.track = .song(id: "spotify:track:back", name: "Back")
-        #expect(await recorder.waitFor(5) { $0.track?.name == "Back" && !$0.isAdPlaying })
+        fake.track = .song(id: "spotify:track:back")
+        #expect(await recorder.waitFor(5) { $0.trackID == .song(id: "spotify:track:back") && !$0.isAdPlaying })
+    }
+
+    @Test("An ad ID reaches the detector within half a second")
+    func fastAdDetection() async throws {
+        let fake = FakeSpotify()
+        fake.track = .song()
+        let recorder = Recorder()
+        let watcher = makeWatcher(fake, recorder)
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.trackID == .song() })
+
+        fake.track = .ad()
+        #expect(await recorder.waitFor(0.5) { $0.isAdPlaying })
+    }
+
+    @Test("A stable track polls its ID without rereading player state")
+    func stableTrackUsesFastIDReads() async throws {
+        let fake = FakeSpotify()
+        fake.track = .song()
+        let recorder = Recorder()
+        let watcher = makeWatcher(fake, recorder)
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.trackID == .song() })
+        let stateReads = fake.playerStateReads
+        try await Task.sleep(for: .milliseconds(550))
+
+        #expect(fake.trackIDReads >= 3)
+        #expect(fake.playerStateReads == stateReads)
+        #expect(recorder.all.last?.trackID == .song())
+    }
+
+    @Test("A changed ID is reported")
+    func changedIDIsReported() async throws {
+        let fake = FakeSpotify()
+        fake.track = .song()
+        let recorder = Recorder()
+        let watcher = makeWatcher(fake, recorder)
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.trackID == .song() })
+
+        fake.track = .song(id: "spotify:track:back")
+        #expect(await recorder.waitFor { $0.trackID == .song(id: "spotify:track:back") })
+    }
+
+    @Test("A stopped stale ad ID never starts muting")
+    func stoppedAdDoesNotTrigger() async throws {
+        let fake = FakeSpotify()
+        fake.playerState = .stopped
+        fake.track = .ad()
+        let recorder = Recorder()
+        let watcher = makeWatcher(fake, recorder)
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.trackID?.isSpotifyAd == true })
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(recorder.all.contains(where: \.isAdPlaying) == false)
+    }
+
+    @Test("A paused ad still starts muting")
+    func pausedAdTriggers() async throws {
+        let fake = FakeSpotify()
+        fake.playerState = .paused
+        fake.track = .song()
+        let recorder = Recorder()
+        let watcher = makeWatcher(fake, recorder)
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.trackID == .song() })
+
+        fake.track = .ad()
+        #expect(await recorder.waitFor(0.5) { $0.isAdPlaying })
     }
 }
 
@@ -142,12 +229,14 @@ struct SpotifyWatcherPermissionTests {
         watcher.start()
         if access == .ok {
             try #require(await recorder.waitFor { $0.access == .ok && $0.isAdPlaying })
-            #expect(fake.playbackReads > 0)
+            #expect(fake.trackIDReads > 0)
+            #expect(fake.playerStateReads > 0)
         } else {
             try #require(await recorder.waitFor {
-                $0.access == access && $0.track == nil && $0.state == .stopped
+                $0.access == access && $0.trackID == nil && $0.state == .stopped
             })
-            #expect(fake.playbackReads == 0)
+            #expect(fake.trackIDReads == 0)
+            #expect(fake.playerStateReads == 0)
         }
         #expect(fake.accessRequests == 0)
     }
@@ -164,7 +253,8 @@ struct SpotifyWatcherPermissionTests {
         watcher.start()
         try #require(await recorder.waitFor { $0.access == .denied })
         #expect(fake.accessRequests == 0)
-        #expect(fake.playbackReads == 0)
+        #expect(fake.trackIDReads == 0)
+        #expect(fake.playerStateReads == 0)
 
         fake.access = .ok
         #expect(await recorder.waitFor { $0.access == .ok && $0.isAdPlaying })
@@ -180,14 +270,16 @@ struct SpotifyWatcherPermissionTests {
         defer { watcher.stop() }
 
         watcher.start()
-        try #require(await recorder.waitFor { $0.access == .ok && $0.track == .song() })
+        try #require(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
 
         fake.access = .denied
         try #require(await recorder.waitFor { $0.access == .denied })
-        let readsAfterDenial = fake.playbackReads
+        let idReads = fake.trackIDReads
+        let stateReads = fake.playerStateReads
         try await Task.sleep(for: .milliseconds(1500))
 
-        #expect(fake.playbackReads == readsAfterDenial)
+        #expect(fake.trackIDReads == idReads)
+        #expect(fake.playerStateReads == stateReads)
         #expect(fake.accessRequests == 0)
     }
 
@@ -215,15 +307,17 @@ struct SpotifyWatcherPermissionTests {
         // Longer than the normal two-second Apple-event timeout.
         try await Task.sleep(for: .milliseconds(2500))
         #expect(fake.accessRequests == 1)
-        #expect(fake.playbackReads == 0)
-        #expect(recorder.all.allSatisfy { $0.track == nil && $0.state == .stopped })
+        #expect(fake.trackIDReads == 0)
+        #expect(fake.playerStateReads == 0)
+        #expect(recorder.all.allSatisfy { $0.trackID == nil && $0.state == .stopped })
 
         release.signal()
         try #require(await recorder.waitFor { $0.access == answer })
         if answer == .ok {
-            #expect(recorder.all.last?.track == TrackInfo.song())
+            #expect(recorder.all.last?.trackID == String.song())
         } else {
-            #expect(fake.playbackReads == 0)
+            #expect(fake.trackIDReads == 0)
+            #expect(fake.playerStateReads == 0)
         }
         #expect(fake.accessRequests == 1)
     }
@@ -252,7 +346,8 @@ struct SpotifyWatcherPermissionTests {
         release.signal()
         try await Task.sleep(for: .milliseconds(250))
         #expect(returned.withLock { $0 })
-        #expect(fake.playbackReads == 0)
+        #expect(fake.trackIDReads == 0)
+        #expect(fake.playerStateReads == 0)
     }
 
     @Test("Restarting does not duplicate an in-flight permission request")
@@ -280,7 +375,7 @@ struct SpotifyWatcherPermissionTests {
         #expect(fake.accessRequests == 1)
 
         release.signal()
-        try #require(await recorder.waitFor { $0.access == .ok && $0.track == .song() })
+        try #require(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
         #expect(fake.accessRequests == 1)
     }
 
@@ -354,15 +449,16 @@ struct SpotifyWatcherPermissionTests {
         try await Task.sleep(for: .milliseconds(2500))
         #expect(recorder.all.filter(\.isRunning).count > runningCount)
         #expect(fake.accessRequests == 0)
-        #expect(fake.playbackReads == 0)
+        #expect(fake.trackIDReads == 0)
+        #expect(fake.playerStateReads == 0)
         #expect(recorder.all.filter(\.isRunning).allSatisfy {
-            $0.access == .undetermined && $0.track == nil && $0.state == .stopped
+            $0.access == .undetermined && $0.trackID == nil && $0.state == .stopped
         })
 
         fake.access = .ok
         fake.onAccessCheck = nil
         release.signal()
-        try #require(await recorder.waitFor { $0.access == .ok && $0.track == TrackInfo.song() })
+        try #require(await recorder.waitFor { $0.access == .ok && $0.trackID == String.song() })
         #expect(fake.accessRequests == 0)
     }
 }

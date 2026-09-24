@@ -2,46 +2,61 @@
 //  SpotifyWatcher.swift
 //  AdSilencer
 //
-//  Reports playback by reading Spotify once a second.
+//  Watches Spotify and tells the app what it is doing.
 //
-//  Event-driven detection was tried and removed. Spotify's
-//  PlaybackStateChanged notification never fired, measured across two minutes
-//  of playback. The ad state file did fire, but up to 6.7 seconds before
-//  `current track` caught up, and again roughly every 100 seconds with nothing
-//  changed. Neither could tell the app when an ad began.
+//  The track id is read every 100 ms so an ad can be muted quickly.
+//  Permission, and playing / paused / stopped, are read once a second
+//  for the menu.
+//
+//  Asking for Automation permission can wait on a dialog, so that check
+//  runs on its own queue. The track-id timer does not wait for it.
 //
 
 import Foundation
 import Synchronization
 
-/// One reading of Spotify's state.
-struct PlaybackSnapshot: Equatable, Sendable {
+extension String {
+    /// True for a Spotify ad URI. Podcasts and local files do not use this prefix.
+    var isSpotifyAd: Bool {
+        lowercased().hasPrefix("spotify:ad:")
+    }
+}
+
+/// One reading of Spotify.
+struct Playback: Equatable, Sendable {
     let isRunning: Bool
     let access: SpotifyAccess
     let state: SpotifyPlayerState
-    let track: TrackInfo?
+    /// Spotify URI, such as `spotify:track:71GMl3Q7U4JnrTqI9kfcoN`.
+    let trackID: String?
 
-    static let idle = PlaybackSnapshot(
-        isRunning: false, access: .unavailable, state: .stopped, track: nil
+    static let idle = Playback(
+        isRunning: false, access: .unavailable, state: .stopped, trackID: nil
     )
 
     /// An ad still counts while paused, so a pause does not unmute.
     var isAdPlaying: Bool {
-        track?.isAd == true && state != .stopped
+        trackID?.isSpotifyAd == true && state != .stopped
     }
 }
 
 final class SpotifyWatcher: Sendable {
 
-    /// Time between playback reads.
-    static let interval: TimeInterval = 1
+    /// Time between track ID reads.
+    static let adInterval: TimeInterval = 0.1
+    /// Time between player-state reports and permission checks.
+    static let statusInterval: TimeInterval = 1
 
     private struct State {
-        var timer: DispatchSourceTimer?
+        var adTimer: DispatchSourceTimer?
+        var statusTimer: DispatchSourceTimer?
         var running = false
-        var requestedAccess = false
-        var permissionInFlight = false
-        var permissionStatus: SpotifyAccess?
+        var askedForPermission = false
+        var checkingPermission = false
+        var permission: SpotifyAccess?
+        var playerState: SpotifyPlayerState = .stopped
+        var trackID: String?
+        var adWasPlaying = false
     }
 
     /// Playback reads happen here, so a slow reply cannot block the UI.
@@ -49,12 +64,15 @@ final class SpotifyWatcher: Sendable {
     /// Automation permission checks can wait on a consent dialog.
     private let permissionQueue = DispatchQueue(label: "com.ensarbaba.AdSilencer.spotify.permission")
     private let spotify: SpotifyControlling
-    private let onSnapshot: @Sendable (PlaybackSnapshot) -> Void
+    private let onPlayback: @Sendable (Playback) -> Void
     private let state = Mutex(State())
 
-    init(spotify: SpotifyControlling, onSnapshot: @escaping @Sendable (PlaybackSnapshot) -> Void) {
+    init(
+        spotify: SpotifyControlling,
+        onPlayback: @escaping @Sendable (Playback) -> Void
+    ) {
         self.spotify = spotify
-        self.onSnapshot = onSnapshot
+        self.onPlayback = onPlayback
     }
 
     deinit {
@@ -65,90 +83,168 @@ final class SpotifyWatcher: Sendable {
         stop()
         state.withLock {
             $0.running = true
-            $0.requestedAccess = false
-            $0.permissionStatus = nil
+            $0.askedForPermission = false
+            $0.permission = nil
+            $0.playerState = .stopped
+            $0.trackID = nil
+            $0.adWasPlaying = false
         }
 
-        let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(
-            deadline: .now() + Self.interval,
-            repeating: Self.interval,
-            leeway: .milliseconds(100)
+        let adTimer = DispatchSource.makeTimerSource(queue: queue)
+        adTimer.schedule(
+            deadline: .now() + Self.adInterval,
+            repeating: Self.adInterval,
+            leeway: .milliseconds(10)
         )
-        timer.setEventHandler { [weak self] in self?.read() }
+        adTimer.setEventHandler { [weak self] in self?.readPlayerTrackID() }
 
-        state.withLock { $0.timer = timer }
-        timer.resume()
+        let statusTimer = DispatchSource.makeTimerSource(queue: queue)
+        statusTimer.schedule(
+            deadline: .now() + Self.statusInterval,
+            repeating: Self.statusInterval,
+            leeway: .milliseconds(50)
+        )
+        statusTimer.setEventHandler { [weak self] in self?.readPlayerStatus() }
+
+        state.withLock {
+            $0.adTimer = adTimer
+            $0.statusTimer = statusTimer
+        }
+        adTimer.resume()
+        statusTimer.resume()
         refresh()
     }
 
     func stop() {
-        let timer = state.withLock { state -> DispatchSourceTimer? in
+        let timers = state.withLock { state -> (DispatchSourceTimer?, DispatchSourceTimer?) in
             defer {
                 state.running = false
-                state.timer = nil
+                state.adTimer = nil
+                state.statusTimer = nil
             }
-            return state.timer
+            return (state.adTimer, state.statusTimer)
         }
-        timer?.cancel()
+        timers.0?.cancel()
+        timers.1?.cancel()
     }
 
-    /// Reads now rather than waiting for the next tick.
+    /// Reads now rather than waiting for the next timer.
     func refresh() {
-        queue.async { [weak self] in self?.read() }
+        queue.async { [weak self] in self?.readPlayerStatus() }
     }
 
-    /// Runs on `queue`.
-    private func read() {
+    /// Runs on `queue`. Track id only, unless an ad just appeared.
+    private func readPlayerTrackID() {
         guard state.withLock({ $0.running }) else { return }
-        onSnapshot(snapshot())
+        if cannotReadSpotifyYet() {
+            let waiting = waitingPlayback()
+            if adPlayingChanged(waiting) { onPlayback(waiting) }
+            return
+        }
+        detectAd()
+        let reading = playback(access: .ok)
+        if adPlayingChanged(reading) { onPlayback(reading) }
     }
 
-    private func snapshot() -> PlaybackSnapshot {
+    /// Runs on `queue`. Permission and playing/paused/stopped.
+    private func readPlayerStatus() {
+        guard state.withLock({ $0.running }) else { return }
+        if spotify.isRunning { beginPermissionCheck() }
+        if cannotReadSpotifyYet() {
+            let waiting = waitingPlayback()
+            _ = adPlayingChanged(waiting)
+            onPlayback(waiting)
+            return
+        }
+        detectAd()
+        let playerState = spotify.playerState
+        state.withLock { $0.playerState = playerState }
+        let reading = playback(access: .ok)
+        _ = adPlayingChanged(reading)
+        onPlayback(reading)
+    }
+
+    /// Spotify is quit, or Automation is not granted yet.
+    private func cannotReadSpotifyYet() -> Bool {
         guard spotify.isRunning else {
             state.withLock {
-                $0.requestedAccess = false
-                $0.permissionStatus = nil
+                $0.askedForPermission = false
+                $0.permission = nil
+                $0.playerState = .stopped
+                $0.trackID = nil
             }
-            return .idle
+            return true
         }
+        return state.withLock { $0.permission } != .ok
+    }
 
-        beginPermissionProbe()
-        let permissionStatus = state.withLock { $0.permissionStatus }
-        if permissionStatus == .ok {
-            return PlaybackSnapshot(
-                isRunning: true,
-                access: .ok,
-                state: spotify.playerState,
-                track: spotify.currentTrack()
-            )
-        }
-
-        return PlaybackSnapshot(
+    /// What to tell the app while Spotify cannot be read.
+    private func waitingPlayback() -> Playback {
+        guard spotify.isRunning else { return .idle }
+        let permission = state.withLock { $0.permission }
+        return Playback(
             isRunning: true,
-            access: permissionStatus ?? .undetermined,
+            access: permission ?? .undetermined,
             state: .stopped,
-            track: nil
+            trackID: nil
         )
     }
 
-    private func beginPermissionProbe() {
-        let shouldProbe = state.withLock { s -> Bool in
-            guard s.running, !s.permissionInFlight else { return false }
-            s.permissionInFlight = true
-            return true
+    /// Updates the stored track. Reads player state when an ad id needs it.
+    private func detectAd() {
+        let id = spotify.currentTrackID()
+        let fastState = state.withLock { state -> (changed: Bool, trackID: String?, player: SpotifyPlayerState) in
+            let changed = state.trackID != id
+            if changed { state.trackID = id }
+            return (changed, state.trackID, state.playerState)
         }
-        if shouldProbe {
-            permissionQueue.async { [weak self] in self?.finishPermission() }
+
+        guard fastState.trackID?.isSpotifyAd == true
+            && (fastState.changed || fastState.player == .stopped)
+        else { return }
+
+        let playerState = spotify.playerState
+        state.withLock { $0.playerState = playerState }
+    }
+
+    private func playback(access: SpotifyAccess) -> Playback {
+        state.withLock { state in
+            Playback(
+                isRunning: true,
+                access: access,
+                state: state.playerState,
+                trackID: state.trackID
+            )
         }
     }
 
-    private func finishPermission() {
+    /// True when “is an ad playing?” flipped. Updates the stored flag.
+    private func adPlayingChanged(_ playback: Playback) -> Bool {
+        state.withLock { state in
+            let adPlaying = playback.isAdPlaying
+            let changed = state.adWasPlaying != adPlaying
+            state.adWasPlaying = adPlaying
+            return changed
+        }
+    }
+
+    private func beginPermissionCheck() {
+        let shouldCheck = state.withLock { s -> Bool in
+            guard s.running, !s.checkingPermission else { return false }
+            s.checkingPermission = true
+            return true
+        }
+        if shouldCheck {
+            permissionQueue.async { [weak self] in self?.finishPermissionCheck() }
+        }
+    }
+
+    private func finishPermissionCheck() {
         var result = spotify.access
         if result == .undetermined {
             let shouldRequest = state.withLock { s -> Bool in
-                guard s.running, !s.requestedAccess else { return false }
-                s.requestedAccess = true
+                guard s.running, !s.askedForPermission else { return false }
+                s.askedForPermission = true
                 return true
             }
             if shouldRequest {
@@ -156,8 +252,8 @@ final class SpotifyWatcher: Sendable {
             }
         }
         state.withLock { s in
-            s.permissionStatus = result
-            s.permissionInFlight = false
+            s.permission = result
+            s.checkingPermission = false
         }
     }
 }
