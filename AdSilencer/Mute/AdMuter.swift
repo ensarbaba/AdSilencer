@@ -2,12 +2,13 @@
 //  AdMuter.swift
 //  AdSilencer
 //
-//  Mutes Spotify during ads and puts the volume back after.
+//  Turns Spotify's volume down for an ad and puts it back after.
 //
-//  `apply(adPlaying:)` takes the current state, not a change, so a repeated or
-//  duplicate report is harmless.
-//
-//  The watcher reads Spotify once a second.
+//  The mute level is 1, not 0. Some ads pause when the volume is 0.
+//  Spotify reads a written volume back one step lower, so restoring the
+//  saved number would walk the volume down on every ad. The restore
+//  writes one step higher.
+//  If the user moves the slider during an ad, that volume is left alone.
 //
 
 import Foundation
@@ -29,7 +30,7 @@ final class AdMuter: Sendable {
         /// Volume held down.
         case muting
         /// Ad still on, but the user moved the slider, so leave it alone.
-        case yielded
+        case leftAlone
     }
 
     private struct State {
@@ -53,21 +54,15 @@ final class AdMuter: Sendable {
         }
     }
 
-    var isMuting: Bool {
-        state.withLock { $0.phase == .muting }
-    }
-
-    /// Call with the current ad state on every read. Returns true on the read
-    /// that first mutes an ad, so the caller can count it.
+    /// Call with the current ad state on every read. Returns whether the
+    /// volume is held down after this call.
     @discardableResult
     func apply(adPlaying: Bool) -> Bool {
-        var muted = false
-
         state.withLock { s in
             guard s.on, adPlaying else {
                 // Not only while muting: a mute whose read-back never confirmed
                 // still wrote zero, so it still has to be undone.
-                if s.phase != .yielded, !putBack(&s) {
+                if s.phase != .leftAlone, !putBack(&s) {
                     // The write did not take. Keep the saved volume and try
                     // again on the next read, rather than leaving it silent.
                     return
@@ -87,7 +82,6 @@ final class AdMuter: Sendable {
                 spotify.soundVolume = Self.muteLevel
                 guard Self.isSilent(spotify.soundVolume) else { return }
                 s.phase = .muting
-                muted = true
 
             case .muting:
                 let current = spotify.soundVolume
@@ -95,15 +89,15 @@ final class AdMuter: Sendable {
                 if !Self.isSilent(current) {
                     // The user moved the slider. Take their value and stop.
                     s.saved = current
-                    s.phase = .yielded
+                    s.phase = .leftAlone
                 }
 
-            case .yielded:
+            case .leftAlone:
                 break
             }
         }
 
-        return muted
+        return state.withLock { $0.phase == .muting }
     }
 
     /// Puts the volume back. Safe when nothing is muted. Used on quit and when
@@ -111,7 +105,7 @@ final class AdMuter: Sendable {
     func restore() {
         state.withLock { s in
             // Failed restoration stays pending for the next poll.
-            if s.phase != .yielded, !putBack(&s) { return }
+            if s.phase != .leftAlone, !putBack(&s) { return }
             s.phase = .idle
             s.saved = nil
         }

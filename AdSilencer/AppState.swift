@@ -2,10 +2,10 @@
 //  AppState.swift
 //  AdSilencer
 //
-//  Joins the watcher to the muter and holds what the menu shows.
+//  What the menu shows, and the link from Spotify reads to the muter.
 //
-//  Snapshots arrive on the watcher's queue. Muting is applied there, before
-//  anything hops to the main thread, so a slow UI cannot delay it.
+//  Mute runs on the watcher queue, before the menu update, so a slow
+//  menu cannot delay it.
 //
 
 import Foundation
@@ -19,25 +19,22 @@ final class AppState {
 
     private enum Keys {
         static let on = "muteAdsEnabled"
-        static let count = "adsMutedCount"
     }
 
     var isOn: Bool {
         didSet {
             defaults.set(isOn, forKey: Keys.on)
             muter.isOn = isOn
-            isMuting = isOn && muter.isMuting
             watcher?.refresh()
         }
     }
 
-    private(set) var adsMuted: Int
     private(set) var playback: Playback = .idle
-    private(set) var isMuting = false
+    private var volumeHeldDown = false
 
-    /// Held rather than read in the menu. A menu built from `MenuBarExtra` is
-    /// cached, so a value read while drawing is never read again and the tick
-    /// stops matching the system.
+    /// Stored here rather than read while the menu draws. MenuBarExtra caches
+    /// the menu, so a value read during drawing is never read again and the
+    /// switch stops matching System Settings.
     private(set) var loginStatus = SMAppService.mainApp.status
 
     private let spotify: SpotifyControlling
@@ -50,8 +47,6 @@ final class AppState {
         self.defaults = defaults
         defaults.register(defaults: [Keys.on: true])
 
-        self.adsMuted = defaults.integer(forKey: Keys.count)
-
         let on = defaults.bool(forKey: Keys.on)
         self.isOn = on
 
@@ -63,12 +58,12 @@ final class AppState {
         let muter = self.muter
 
         let watcher = SpotifyWatcher(spotify: spotify) { [weak self] playback in
-            // Watcher queue. Mute first, publish after.
-            let mutedAnAd = muter.apply(adPlaying: playback.isAdPlaying)
-            let muting = muter.isMuting
+            // Watcher queue. Mute first, then update the menu.
+            let volumeIsDown = muter.apply(adPlaying: playback.isAdPlaying)
 
             Task { @MainActor in
-                self?.publish(playback, muting: muting, mutedAnAd: mutedAnAd)
+                self?.playback = playback
+                self?.volumeHeldDown = (self?.isOn == true) && volumeIsDown
             }
         }
 
@@ -91,15 +86,6 @@ final class AppState {
         loginStatus = SMAppService.mainApp.status
     }
 
-    private func publish(_ playback: Playback, muting: Bool, mutedAnAd: Bool) {
-        self.playback = playback
-        self.isMuting = isOn && muting
-        if mutedAnAd {
-            adsMuted += 1
-            defaults.set(adsMuted, forKey: Keys.count)
-        }
-    }
-
     // MARK: - Menu
 
     var statusLine: String {
@@ -110,7 +96,7 @@ final class AppState {
         case .unavailable: return "Spotify not reachable"
         case .ok: break
         }
-        if isMuting { return "Muting ad" }
+        if volumeHeldDown { return "Muting ad" }
         switch playback.state {
         case .playing: return "Spotify is Playing"
         case .paused: return "Paused"

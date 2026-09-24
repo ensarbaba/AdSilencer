@@ -34,10 +34,12 @@ struct AppStateTests {
         let fake = FakeSpotify()
         fake.track = .ad()
         let entered = Mutex(false)
+        let returned = Mutex(false)
         let release = DispatchSemaphore(value: 0)
         fake.beforeTrackIDRead = {
             entered.withLock { $0 = true }
             release.wait()
+            returned.withLock { $0 = true }
         }
         let state = makeState(fake)
         defer {
@@ -50,10 +52,9 @@ struct AppStateTests {
         state.shutdown()
         release.signal()
 
-        // Publishing happens after the blocked read has reached the muter.
-        #expect(await waitFor { state.playback.trackID == .ad() })
+        #expect(await waitFor { returned.withLock { $0 } })
         #expect(fake.soundVolume == 70)
-        #expect(!state.isMuting)
+        #expect(state.statusLine != "Muting ad")
     }
 
     @Test("Toggling back on remutes an ad that is already playing")
@@ -63,11 +64,11 @@ struct AppStateTests {
         let state = makeState(fake)
         defer { state.shutdown() }
         state.start()
-        #expect(await waitFor { state.isMuting })
+        #expect(await waitFor { state.statusLine == "Muting ad" })
         state.isOn = false
-        #expect(!state.isMuting)
+        #expect(await waitFor { state.statusLine != "Muting ad" })
         state.isOn = true
-        #expect(await waitFor { state.isMuting && fake.soundVolume == 1 })
+        #expect(await waitFor { state.statusLine == "Muting ad" && fake.soundVolume == 1 })
     }
 
     @Test("An ad found by polling is muted, and the music comes back after")
@@ -79,32 +80,9 @@ struct AppStateTests {
         state.start()
         #expect(await waitFor { state.playback.trackID == .song() })
         fake.track = .ad()
-        #expect(await waitFor(5) { state.isMuting && fake.soundVolume == 1 })
+        #expect(await waitFor(0.5) { state.statusLine == "Muting ad" && fake.soundVolume == 1 })
         fake.track = .song()
-        #expect(await waitFor(5) { !state.isMuting && fake.soundVolume == 70 })
-    }
-
-    @Test("Each ad counts once, however many reads it spans")
-    func countsAds() async {
-        let fake = FakeSpotify()
-        fake.track = .song()
-        let state = makeState(fake)
-        defer { state.shutdown() }
-        state.start()
-
-        #expect(state.adsMuted == 0)
-
-        fake.track = .ad()
-        #expect(await waitFor(5) { state.adsMuted == 1 })
-
-        // More polls of the same ad must not count it again.
-        try? await Task.sleep(for: .seconds(2))
-        #expect(state.adsMuted == 1)
-
-        fake.track = .song()
-        #expect(await waitFor(5) { !state.isMuting })
-        fake.track = .ad(id: "spotify:ad:second")
-        #expect(await waitFor(5) { state.adsMuted == 2 })
+        #expect(await waitFor(0.5) { state.statusLine != "Muting ad" && fake.soundVolume == 70 })
     }
 
     @Test("Switching off restores the volume and ignores ads")
@@ -192,7 +170,7 @@ struct AppStateTests {
         defer { state.shutdown() }
         state.start()
 
-        #expect(await waitFor(5) { state.isMuting })
+        #expect(await waitFor(5) { state.statusLine == "Muting ad" })
         #expect(state.menuBarImage == "MenuBarOn")
     }
 }

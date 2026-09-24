@@ -24,9 +24,8 @@ struct AdMuterTests {
         muter.isOn = false
         #expect(fake.soundVolume == 1)
         fake.rejectsWrites = false
-        muter.apply(adPlaying: false)
+        #expect(!muter.apply(adPlaying: false))
         #expect(fake.soundVolume == 70)
-        #expect(!muter.isMuting)
     }
 
     @Test("A manual volume change just before restoration is preserved", arguments: [false, true])
@@ -41,7 +40,7 @@ struct AdMuterTests {
             muter.apply(adPlaying: false)
         }
         #expect(fake.soundVolume == 40)
-        #expect(!muter.isMuting)
+        #expect(!muter.apply(adPlaying: false))
     }
 
     @Test("An unconfirmed mute still restores when the ad ends")
@@ -49,8 +48,7 @@ struct AdMuterTests {
         let fake = FakeSpotify()
         fake.failsReadback = true
         let muter = AdMuter(spotify: fake)
-        muter.apply(adPlaying: true)
-        #expect(!muter.isMuting)
+        #expect(!muter.apply(adPlaying: true))
         fake.failsReadback = false
         muter.apply(adPlaying: false)
         #expect(fake.soundVolume == 70)
@@ -62,8 +60,7 @@ struct AdMuterTests {
         let muter = AdMuter(spotify: fake)
         muter.apply(adPlaying: true)
         fake.userSetsVolume(-1)
-        muter.apply(adPlaying: true)
-        #expect(muter.isMuting)
+        #expect(muter.apply(adPlaying: true))
         fake.userSetsVolume(0)
         muter.apply(adPlaying: false)
         #expect(fake.soundVolume == 70)
@@ -75,10 +72,8 @@ struct AdMuterTests {
         fake.rejectsWrites = true
         let muter = AdMuter(spotify: fake)
         #expect(!muter.apply(adPlaying: true))
-        #expect(!muter.isMuting)
         fake.rejectsWrites = false
         #expect(muter.apply(adPlaying: true))
-        #expect(muter.isMuting)
         #expect(fake.soundVolume == 1)
     }
 
@@ -86,13 +81,11 @@ struct AdMuterTests {
     func muteThenRestore() {
         let (muter, fake) = make(volume: 70)
 
-        muter.apply(adPlaying: true)
+        #expect(muter.apply(adPlaying: true))
         #expect(fake.soundVolume == 1)
-        #expect(muter.isMuting)
 
-        muter.apply(adPlaying: false)
+        #expect(!muter.apply(adPlaying: false))
         #expect(fake.soundVolume == 70)
-        #expect(muter.isMuting == false)
     }
 
     @Test("Repeated reports do not overwrite the saved volume")
@@ -237,16 +230,16 @@ struct AdMuterTests {
         }
     }
 
-    @Test("Each ad reports once, however many reads it spans")
-    func reportsOncePerAd() {
+    @Test("The volume stays down across repeated reads of one ad")
+    func staysDownForTheWholeAd() {
         let fake = FakeSpotify()
         let muter = AdMuter(spotify: fake)
 
         #expect(muter.apply(adPlaying: true))
-        #expect(!muter.apply(adPlaying: true))
-        #expect(!muter.apply(adPlaying: true))
+        #expect(muter.apply(adPlaying: true))
+        #expect(muter.apply(adPlaying: true))
 
-        muter.apply(adPlaying: false)
+        #expect(!muter.apply(adPlaying: false))
         #expect(muter.apply(adPlaying: true))
     }
 }
@@ -269,11 +262,10 @@ struct AdMuterRestoreRetryTests {
 
         fake.rejectsWrites = false
         fake.failsReadback = false
-        muter.apply(adPlaying: false)
+        #expect(!muter.apply(adPlaying: false))
 
         #expect(fake.soundVolume == 70)
         #expect(fake.volumeWrites == [1, 70, 70])
-        #expect(!muter.isMuting)
     }
 
     @Test("A restore that does not take is retried, not abandoned")

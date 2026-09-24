@@ -2,8 +2,7 @@
 //  MenuBarView.swift
 //  AdSilencer
 //
-//  The whole interface. The icon and the counter are the only sign the app is
-//  working, since it has no window.
+//  The only interface. A menu bar icon and this menu. There is no window.
 //
 
 import AppKit
@@ -27,7 +26,6 @@ struct MenuBarView: View {
         Divider()
 
         Toggle("Mute Spotify ads", isOn: $state.isOn)
-        Text("Ads muted: \(state.adsMuted)")
 
         Divider()
 
