@@ -24,14 +24,14 @@ extension String {
 
 /// One reading of Spotify.
 struct Playback: Equatable, Sendable {
-    let isRunning: Bool
+    let isSpotifyRunning: Bool
     let access: SpotifyAccess
     let state: SpotifyPlayerState
     /// Spotify URI, such as `spotify:track:71GMl3Q7U4JnrTqI9kfcoN`.
     let trackID: String?
 
     static let idle = Playback(
-        isRunning: false, access: .unavailable, state: .stopped, trackID: nil
+        isSpotifyRunning: false, access: .unavailable, state: .stopped, trackID: nil
     )
 
     /// An ad still counts while paused, so a pause does not unmute.
@@ -149,7 +149,7 @@ final class SpotifyWatcher: Sendable {
     /// Runs on `queue`. Permission and playing/paused/stopped.
     private func readPlayerStatus() {
         guard state.withLock({ $0.running }) else { return }
-        if spotify.isRunning { beginPermissionCheck() }
+        if spotify.isSpotifyRunning { beginPermissionCheck() }
         if cannotReadSpotifyYet() {
             let waiting = waitingPlayback()
             _ = adPlayingChanged(waiting)
@@ -166,7 +166,7 @@ final class SpotifyWatcher: Sendable {
 
     /// Spotify is quit, or Automation is not granted yet.
     private func cannotReadSpotifyYet() -> Bool {
-        guard spotify.isRunning else {
+        guard spotify.isSpotifyRunning else {
             state.withLock {
                 $0.askedForPermission = false
                 $0.permission = nil
@@ -180,10 +180,10 @@ final class SpotifyWatcher: Sendable {
 
     /// What to tell the app while Spotify cannot be read.
     private func waitingPlayback() -> Playback {
-        guard spotify.isRunning else { return .idle }
+        guard spotify.isSpotifyRunning else { return .idle }
         let permission = state.withLock { $0.permission }
         return Playback(
-            isRunning: true,
+            isSpotifyRunning: true,
             access: permission ?? .undetermined,
             state: .stopped,
             trackID: nil
@@ -210,7 +210,7 @@ final class SpotifyWatcher: Sendable {
     private func playback(access: SpotifyAccess) -> Playback {
         state.withLock { state in
             Playback(
-                isRunning: true,
+                isSpotifyRunning: true,
                 access: access,
                 state: state.playerState,
                 trackID: state.trackID

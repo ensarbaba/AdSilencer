@@ -14,7 +14,7 @@ import Synchronization
 final class FakeSpotify: SpotifyControlling {
 
     private struct State {
-        var isRunning = true
+        var isSpotifyRunning = true
         var access: SpotifyAccess = .ok
         var accessRequests = 0
         var playerStateReads = 0
@@ -34,9 +34,9 @@ final class FakeSpotify: SpotifyControlling {
 
     private let state = Mutex(State())
 
-    var isRunning: Bool {
-        get { state.withLock { $0.isRunning } }
-        set { state.withLock { $0.isRunning = newValue } }
+    var isSpotifyRunning: Bool {
+        get { state.withLock { $0.isSpotifyRunning } }
+        set { state.withLock { $0.isSpotifyRunning = newValue } }
     }
 
     var access: SpotifyAccess {

@@ -89,7 +89,7 @@ final class AppState {
     // MARK: - Menu
 
     var statusLine: String {
-        guard playback.isRunning else { return "Spotify not running" }
+        guard playback.isSpotifyRunning else { return "Spotify not running" }
         switch playback.access {
         case .denied: return "No permission to control Spotify"
         case .undetermined: return "Waiting for permission"

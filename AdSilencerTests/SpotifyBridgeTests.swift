@@ -31,7 +31,7 @@ struct SpotifyAccessTests {
         // Reading access sends no Apple event and shows no prompt.
         let bridge = SpotifyBridge()
         let access = bridge.access
-        if bridge.isRunning {
+        if bridge.isSpotifyRunning {
             #expect(access != .unavailable)
         } else {
             #expect(access == .unavailable)

@@ -42,19 +42,19 @@ struct PlaybackTests {
     @Test("An ad counts as playing while paused")
     func adSurvivesPause() {
         // Otherwise a pause would unmute, then mute again on resume.
-        let shot = Playback(isRunning: true, access: .ok, state: .paused, trackID: .ad())
+        let shot = Playback(isSpotifyRunning: true, access: .ok, state: .paused, trackID: .ad())
         #expect(shot.isAdPlaying)
     }
 
     @Test("A stopped ad does not count")
     func adEndsWhenStopped() {
-        let shot = Playback(isRunning: true, access: .ok, state: .stopped, trackID: .ad())
+        let shot = Playback(isSpotifyRunning: true, access: .ok, state: .stopped, trackID: .ad())
         #expect(shot.isAdPlaying == false)
     }
 
     @Test("A song is never an ad")
     func songIsNotAd() {
-        let shot = Playback(isRunning: true, access: .ok, state: .playing, trackID: .song())
+        let shot = Playback(isSpotifyRunning: true, access: .ok, state: .playing, trackID: .song())
         #expect(shot.isAdPlaying == false)
     }
 
@@ -409,14 +409,14 @@ struct SpotifyWatcherPermissionTests {
         watcher.start()
         try #require(await recorder.waitFor { _ in fake.accessRequests == 1 })
 
-        fake.isRunning = false
+        fake.isSpotifyRunning = false
         #expect(await recorder.waitFor { $0 == .idle })
         let afterIdle = recorder.count
 
-        fake.isRunning = true
+        fake.isSpotifyRunning = true
         fake.access = .undetermined
         #expect(await recorder.waitFor { shot in
-            recorder.count > afterIdle && shot.isRunning && shot.access == .undetermined
+            recorder.count > afterIdle && shot.isSpotifyRunning && shot.access == .undetermined
                 && shot == recorder.all.last
         })
         try #require(await recorder.waitFor { _ in fake.accessRequests == 2 })
@@ -426,7 +426,7 @@ struct SpotifyWatcherPermissionTests {
     @Test("A blocked access check still reports Spotify running")
     func blockedAccessStillReportsRunning() async throws {
         let fake = FakeSpotify()
-        fake.isRunning = false
+        fake.isSpotifyRunning = false
         fake.access = .undetermined
         fake.track = .song()
         let release = DispatchSemaphore(value: 0)
@@ -442,16 +442,16 @@ struct SpotifyWatcherPermissionTests {
         watcher.start()
         try #require(await recorder.waitFor { $0 == .idle })
 
-        fake.isRunning = true
-        try #require(await recorder.waitFor { $0.isRunning && $0.access == .undetermined })
-        let runningCount = recorder.all.filter(\.isRunning).count
+        fake.isSpotifyRunning = true
+        try #require(await recorder.waitFor { $0.isSpotifyRunning && $0.access == .undetermined })
+        let runningCount = recorder.all.filter(\.isSpotifyRunning).count
         // Longer than the normal two-second Apple-event timeout.
         try await Task.sleep(for: .milliseconds(2500))
-        #expect(recorder.all.filter(\.isRunning).count > runningCount)
+        #expect(recorder.all.filter(\.isSpotifyRunning).count > runningCount)
         #expect(fake.accessRequests == 0)
         #expect(fake.trackIDReads == 0)
         #expect(fake.playerStateReads == 0)
-        #expect(recorder.all.filter(\.isRunning).allSatisfy {
+        #expect(recorder.all.filter(\.isSpotifyRunning).allSatisfy {
             $0.access == .undetermined && $0.trackID == nil && $0.state == .stopped
         })
 

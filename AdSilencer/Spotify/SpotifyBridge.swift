@@ -37,7 +37,7 @@ enum SpotifyAccess: Equatable {
 }
 
 protocol SpotifyControlling: AnyObject, Sendable {
-    var isRunning: Bool { get }
+    var isSpotifyRunning: Bool { get }
     var access: SpotifyAccess { get }
     var playerState: SpotifyPlayerState { get }
     /// A negative reading means Spotify could not report its volume.
@@ -47,7 +47,7 @@ protocol SpotifyControlling: AnyObject, Sendable {
     func currentTrackID() -> String?
 }
 
-/// Serializes one ScriptingBridge application across callers.
+/// Serializes one ScriptingBridge connection across callers.
 final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
 
     static let bundleID = "com.spotify.client"
@@ -55,10 +55,10 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
     /// How long one Apple event may take. Apple counts this in 1/60ths of
     /// a second, so 120 is two seconds. A normal reply takes about 33 ms.
     private static let eventTimeoutTicks = 120
-    private let applicationLock = NSLock()
-    private var application: SBApplication?
+    private let spotifyConnectionLock = NSLock()
+    private var spotifyConnection: SBApplication?
 
-    var isRunning: Bool {
+    var isSpotifyRunning: Bool {
         !NSRunningApplication
             .runningApplications(withBundleIdentifier: Self.bundleID)
             .isEmpty
@@ -77,7 +77,7 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
     }
 
     private func determineAccess(askUserIfNeeded: Bool) -> SpotifyAccess {
-        guard isRunning else { return .unavailable }
+        guard isSpotifyRunning else { return .unavailable }
 
         // Names Spotify by its bundle id, the way Apple events address an app.
         var target = AEAddressDesc()
@@ -96,60 +96,60 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
         }
     }
 
-    /// The running target application, confined by `application`.
-    private func withApp<Result>(
-        unavailable: Result,
-        _ body: (SBApplication) -> Result
-    ) -> Result {
-        applicationLock.lock()
-        defer { applicationLock.unlock() }
-        guard isRunning else {
-            application = nil
-            return unavailable
+    /// Fills or clears `spotifyConnection`. The caller holds `spotifyConnectionLock`.
+    private func updateSpotifyConnection() {
+        guard isSpotifyRunning else {
+            spotifyConnection = nil
+            return
         }
-        if application == nil {
-            guard let app = SBApplication(bundleIdentifier: Self.bundleID) else {
-                return unavailable
-            }
-            app.timeout = Self.eventTimeoutTicks
-            // sendMode is a bit mask. The default already waits for a reply. This bit
-            // fails the event if Automation is not granted, instead of showing the dialog.
-            // Only requestAccess() may prompt.
-            app.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
-            application = app
+        if spotifyConnection == nil {
+            spotifyConnection = SBApplication(bundleIdentifier: Self.bundleID)
+            spotifyConnection?.timeout = Self.eventTimeoutTicks
+            // sendMode is an integer bit mask. |= turns on 0x00020000 and leaves
+            // the default 0x3 bits, which wait for Spotify's reply. 0x00020000
+            // makes the event fail when Automation is not granted.
+            // ?. skips the write when spotifyConnection is nil.
+            // Only requestAccess() may show the dialog.
+            spotifyConnection?.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
         }
-        guard let application else { return unavailable }
-        return body(application)
     }
 
     var playerState: SpotifyPlayerState {
-        withApp(unavailable: .stopped) { app in
-            SpotifyPlayerState(code: (app as SpotifyScriptingApplication).playerState ?? 0)
+        spotifyConnectionLock.withLock {
+            updateSpotifyConnection()
+            guard let spotifyConnection else { return .stopped }
+            return SpotifyPlayerState(code: (spotifyConnection as SpotifyScriptingApplication).playerState ?? 0)
         }
     }
 
     var soundVolume: Int {
         get {
-            withApp(unavailable: -1) { app in
+            spotifyConnectionLock.withLock {
+                updateSpotifyConnection()
+                guard let spotifyConnection else { return -1 }
                 let errors = SpotifyEventErrors()
-                app.delegate = errors
-                defer { app.delegate = nil }
-                let volume = (app as SpotifyScriptingApplication).soundVolume
+                spotifyConnection.delegate = errors
+                defer { spotifyConnection.delegate = nil }
+                let volume = (spotifyConnection as SpotifyScriptingApplication).soundVolume
                 return errors.failed ? -1 : (volume ?? -1)
             }
         }
         set {
-            withApp(unavailable: ()) { app in
-                (app as SpotifyScriptingApplication).setSoundVolume?(max(0, min(100, newValue)))
+            spotifyConnectionLock.withLock {
+                updateSpotifyConnection()
+                guard let spotifyConnection else { return }
+                (spotifyConnection as SpotifyScriptingApplication).setSoundVolume?(max(0, min(100, newValue)))
             }
         }
     }
 
     func currentTrackID() -> String? {
-        withApp(unavailable: nil as String?) { app in
+        spotifyConnectionLock.withLock {
+            updateSpotifyConnection()
+            guard let spotifyConnection else { return nil }
             // Spotify returns a live object even when nothing is loaded. A missing
             // or empty id is how that appears.
-            guard let id = (app as SpotifyScriptingApplication).currentTrack?.id, !id.isEmpty
+            guard let id = (spotifyConnection as SpotifyScriptingApplication).currentTrack?.id, !id.isEmpty
             else { return nil }
             return id
         }
