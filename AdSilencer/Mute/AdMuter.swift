@@ -48,10 +48,7 @@ final class AdMuter: Sendable {
 
     var isOn: Bool {
         get { state.withLock { $0.on } }
-        set {
-            state.withLock { $0.on = newValue }
-            if !newValue { restore() }
-        }
+        set { state.withLock { $0.on = newValue } }
     }
 
     /// Call with the current ad state on every read. Returns whether the

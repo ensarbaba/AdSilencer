@@ -22,6 +22,7 @@ struct AdMuterTests {
         muter.apply(adPlaying: true)
         fake.rejectsWrites = true
         muter.isOn = false
+        muter.restore()
         #expect(fake.soundVolume == 1)
         fake.rejectsWrites = false
         #expect(!muter.apply(adPlaying: false))
@@ -36,6 +37,7 @@ struct AdMuterTests {
         fake.userSetsVolume(40)
         if switchOff {
             muter.isOn = false
+            muter.restore()
         } else {
             muter.apply(adPlaying: false)
         }
@@ -154,6 +156,7 @@ struct AdMuterTests {
         #expect(fake.soundVolume == 1)
 
         muter.isOn = false
+        muter.restore()
         #expect(fake.soundVolume == 90)
 
         // While off, ads are ignored.
@@ -256,6 +259,7 @@ struct AdMuterRestoreRetryTests {
         fake.failsReadbackAfterNextWrite = true
         if switchOff {
             muter.isOn = false
+            muter.restore()
         } else {
             muter.apply(adPlaying: false)
         }

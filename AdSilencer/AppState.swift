@@ -26,6 +26,7 @@ final class AppState {
         didSet {
             defaults.set(isOn, forKey: Keys.on)
             muter.isOn = isOn
+            if !isOn { muter.restore() }
             watcher?.refresh()
         }
     }
@@ -83,6 +84,7 @@ final class AppState {
     /// Disables muting and restores volume before stopping playback reads.
     func shutdown() {
         muter.isOn = false
+        muter.restore()
         watcher?.stop()
         watcher = nil
         if let menuObserver { NotificationCenter.default.removeObserver(menuObserver) }
