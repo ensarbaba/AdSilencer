@@ -97,10 +97,8 @@ final class AppState {
         refreshLoginStatus()
     }
 
-    /// Assigns only on change, so an unchanged status does not redraw the menu.
     private func refreshLoginStatus() {
-        let status = SMAppService.mainApp.status
-        if status != loginStatus { loginStatus = status }
+        loginStatus = SMAppService.mainApp.status
     }
 
     // MARK: - Menu
