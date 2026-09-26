@@ -56,45 +56,48 @@ final class AdMuter: Sendable {
     @discardableResult
     func apply(adPlaying: Bool) -> Bool {
         state.withLock { s in
-            guard s.on, adPlaying else {
-                // Not only while muting: a mute whose read-back never confirmed
-                // still wrote zero, so it still has to be undone.
-                if s.phase != .leftAlone, !putBack(&s) {
-                    // The write did not take. Keep the saved volume and try
-                    // again on the next read, rather than leaving it silent.
-                    return
-                }
-                s.phase = .idle
-                s.saved = nil
+            update(&s, adPlaying: adPlaying)
+            return s.phase == .muting
+        }
+    }
+
+    private func update(_ s: inout State, adPlaying: Bool) {
+        guard s.on, adPlaying else {
+            // Not only while muting: a mute whose read-back never confirmed
+            // still wrote zero, so it still has to be undone.
+            if s.phase != .leftAlone, !putBack(&s) {
+                // The write did not take. Keep the saved volume and try
+                // again on the next read, rather than leaving it silent.
                 return
             }
-
-            switch s.phase {
-            case .idle:
-                let current = spotify.soundVolume
-                guard current >= 0 else { return }
-                // Only remember a volume worth returning to. Restoring an
-                // already silent value later would look like a bug.
-                if !Self.isSilent(current) { s.saved = current }
-                spotify.soundVolume = Self.muteLevel
-                guard Self.isSilent(spotify.soundVolume) else { return }
-                s.phase = .muting
-
-            case .muting:
-                let current = spotify.soundVolume
-                guard current >= 0 else { return }
-                if !Self.isSilent(current) {
-                    // The user moved the slider. Take their value and stop.
-                    s.saved = current
-                    s.phase = .leftAlone
-                }
-
-            case .leftAlone:
-                break
-            }
+            s.phase = .idle
+            s.saved = nil
+            return
         }
 
-        return state.withLock { $0.phase == .muting }
+        switch s.phase {
+        case .idle:
+            let current = spotify.soundVolume
+            guard current >= 0 else { return }
+            // Only remember a volume worth returning to. Restoring an
+            // already silent value later would look like a bug.
+            if !Self.isSilent(current) { s.saved = current }
+            spotify.soundVolume = Self.muteLevel
+            guard Self.isSilent(spotify.soundVolume) else { return }
+            s.phase = .muting
+
+        case .muting:
+            let current = spotify.soundVolume
+            guard current >= 0 else { return }
+            if !Self.isSilent(current) {
+                // The user moved the slider. Take their value and stop.
+                s.saved = current
+                s.phase = .leftAlone
+            }
+
+        case .leftAlone:
+            break
+        }
     }
 
     /// Puts the volume back. Safe when nothing is muted. Used on quit and when
