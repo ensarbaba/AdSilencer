@@ -73,7 +73,7 @@ final class AdMuter: Sendable {
             guard current >= 0 else { return }
             // Only remember a volume worth returning to. Restoring an
             // already silent value later would look like a bug.
-            if !Self.isSilent(current) { s.saved = current }
+            if current > Self.muteLevel { s.saved = current }
             spotify.soundVolume = Self.muteLevel
             guard Self.isSilent(spotify.soundVolume) else { return }
             s.phase = .muting
@@ -81,7 +81,7 @@ final class AdMuter: Sendable {
         case .muting:
             let current = spotify.soundVolume
             guard current >= 0 else { return }
-            if !Self.isSilent(current) {
+            if current > Self.muteLevel {
                 // The user moved the slider. Take their value and stop.
                 s.saved = current
                 s.phase = .leftAlone
@@ -119,7 +119,7 @@ final class AdMuter: Sendable {
         let current = spotify.soundVolume
         guard current >= 0 else { return false }
         // An audible volume belongs to the user, even between polls.
-        if !Self.isSilent(current) { return true }
+        if current > Self.muteLevel { return true }
 
         spotify.soundVolume = saved
         var back = spotify.soundVolume
@@ -133,6 +133,6 @@ final class AdMuter: Sendable {
 
         // Negative means Spotify could not answer, so the write is unconfirmed
         // and has to be tried again. Silent means it never landed.
-        return back >= 0 && !Self.isSilent(back)
+        return back > Self.muteLevel
     }
 }
