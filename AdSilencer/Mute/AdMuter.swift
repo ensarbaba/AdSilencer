@@ -63,15 +63,7 @@ final class AdMuter: Sendable {
 
     private func update(_ s: inout State, adPlaying: Bool) {
         guard s.on, adPlaying else {
-            // Not only while muting: a mute whose read-back never confirmed
-            // still wrote zero, so it still has to be undone.
-            if s.phase != .leftAlone, !putBack(&s) {
-                // The write did not take. Keep the saved volume and try
-                // again on the next read, rather than leaving it silent.
-                return
-            }
-            s.phase = .idle
-            s.saved = nil
+            unmute(&s)
             return
         }
 
@@ -100,20 +92,28 @@ final class AdMuter: Sendable {
         }
     }
 
-    /// Puts the volume back. Safe when nothing is muted. Used on quit and when
-    /// switching the app off.
+    /// Puts the volume back. Safe when nothing is muted. Used on quit.
     func restore() {
-        state.withLock { s in
-            // Failed restoration stays pending for the next poll.
-            if s.phase != .leftAlone, !putBack(&s) { return }
-            s.phase = .idle
-            s.saved = nil
+        state.withLock { unmute(&$0) }
+    }
+
+    private func unmute(_ s: inout State) {
+        switch s.phase {
+        case .leftAlone:
+            break
+        case .idle, .muting:
+            // Not only while muting: a mute whose read-back never confirmed
+            // still wrote zero, so it still has to be undone.
+            let restored = restoreSavedVolume(&s)
+            guard restored else { return }
         }
+        s.phase = .idle
+        s.saved = nil
     }
 
     /// False means still silent, so the caller should keep the saved value and
     /// try again.
-    private func putBack(_ s: inout State) -> Bool {
+    private func restoreSavedVolume(_ s: inout State) -> Bool {
         guard let saved = s.saved, saved > 0 else { return true }
 
         let current = spotify.soundVolume
