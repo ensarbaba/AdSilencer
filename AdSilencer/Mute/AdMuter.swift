@@ -56,39 +56,41 @@ final class AdMuter: Sendable {
     @discardableResult
     func apply(adPlaying: Bool) -> Bool {
         state.withLock { s in
-            update(&s, adPlaying: adPlaying)
+            adjustVolume(&s, adPlaying: adPlaying)
             return s.phase == .muting
         }
     }
 
-    private func update(_ s: inout State, adPlaying: Bool) {
+    private func adjustVolume(_ s: inout State, adPlaying: Bool) {
         guard s.on, adPlaying else {
             unmute(&s)
             return
         }
-
         switch s.phase {
-        case .idle:
-            let current = spotify.soundVolume
-            guard current >= 0 else { return }
-            // Only remember a volume worth returning to. Restoring an
-            // already silent value later would look like a bug.
-            if current > Self.muteLevel { s.saved = current }
-            spotify.soundVolume = Self.muteLevel
-            guard Self.isSilent(spotify.soundVolume) else { return }
-            s.phase = .muting
+        case .idle: mute(&s)
+        case .muting: leaveAloneIfUserMovedSlider(&s)
+        case .leftAlone: break
+        }
+    }
 
-        case .muting:
-            let current = spotify.soundVolume
-            guard current >= 0 else { return }
-            if current > Self.muteLevel {
-                // The user moved the slider. Take their value and stop.
-                s.saved = current
-                s.phase = .leftAlone
-            }
+    private func mute(_ s: inout State) {
+        let current = spotify.soundVolume
+        guard current >= 0 else { return }
+        // Only remember a volume worth returning to. Restoring an
+        // already silent value later would look like a bug.
+        if current > Self.muteLevel { s.saved = current }
+        spotify.soundVolume = Self.muteLevel
+        guard Self.isSilent(spotify.soundVolume) else { return }
+        s.phase = .muting
+    }
 
-        case .leftAlone:
-            break
+    private func leaveAloneIfUserMovedSlider(_ s: inout State) {
+        let current = spotify.soundVolume
+        guard current >= 0 else { return }
+        if current > Self.muteLevel {
+            // The user moved the slider. Take their value and stop.
+            s.saved = current
+            s.phase = .leftAlone
         }
     }
 

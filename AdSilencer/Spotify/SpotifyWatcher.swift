@@ -141,7 +141,11 @@ final class SpotifyWatcher: Sendable {
             if adPlayingChanged(waiting) { onPlayback(waiting) }
             return
         }
-        detectAd()
+        let previousTrackID = state.withLock { $0.trackID }
+        refreshTrackID()
+        if shouldRefreshPlayerState(previousTrackID: previousTrackID) {
+            refreshPlayerState()
+        }
         let reading = playback(access: .ok)
         if adPlayingChanged(reading) { onPlayback(reading) }
     }
@@ -156,9 +160,8 @@ final class SpotifyWatcher: Sendable {
             onPlayback(waiting)
             return
         }
-        detectAd()
-        let playerState = spotify.playerState
-        state.withLock { $0.playerState = playerState }
+        refreshTrackID()
+        refreshPlayerState()
         let reading = playback(access: .ok)
         _ = adPlayingChanged(reading)
         onPlayback(reading)
@@ -190,21 +193,23 @@ final class SpotifyWatcher: Sendable {
         )
     }
 
-    /// Updates the stored track. Reads player state when an ad id needs it.
-    private func detectAd() {
+    private func refreshTrackID() {
         let id = spotify.currentTrackID()
-        let fastState = state.withLock { state -> (changed: Bool, trackID: String?, player: SpotifyPlayerState) in
-            let changed = state.trackID != id
-            if changed { state.trackID = id }
-            return (changed, state.trackID, state.playerState)
-        }
+        state.withLock { $0.trackID = id }
+    }
 
-        guard fastState.trackID?.isSpotifyAd == true
-            && (fastState.changed || fastState.player == .stopped)
-        else { return }
-
+    private func refreshPlayerState() {
         let playerState = spotify.playerState
         state.withLock { $0.playerState = playerState }
+    }
+
+    /// The stored player state can be a second old. A new ad, or an ad
+    /// stored as stopped, needs a fresh one before it counts.
+    private func shouldRefreshPlayerState(previousTrackID: String?) -> Bool {
+        state.withLock { s in
+            s.trackID?.isSpotifyAd == true
+                && (s.trackID != previousTrackID || s.playerState == .stopped)
+        }
     }
 
     private func playback(access: SpotifyAccess) -> Playback {
