@@ -8,6 +8,7 @@
 //  menu cannot delay it.
 //
 
+import AppKit
 import Foundation
 import Observation
 import ServiceManagement
@@ -34,13 +35,15 @@ final class AppState {
 
     /// Stored here rather than read while the menu draws. MenuBarExtra caches
     /// the menu, so a value read during drawing is never read again and the
-    /// switch stops matching System Settings.
+    /// switch stops matching System Settings. Refreshed each time the menu
+    /// opens, since nothing announces a change made in System Settings.
     private(set) var loginStatus = SMAppService.mainApp.status
 
     private let spotify: SpotifyControlling
     private let defaults: UserDefaults
     private let muter: AdMuter
     @ObservationIgnored private var watcher: SpotifyWatcher?
+    @ObservationIgnored private var menuObserver: NSObjectProtocol?
 
     init(spotify: SpotifyControlling = SpotifyBridge(), defaults: UserDefaults = .standard) {
         self.spotify = spotify
@@ -69,6 +72,12 @@ final class AppState {
 
         self.watcher = watcher
         watcher.start()
+
+        menuObserver = NotificationCenter.default.addObserver(
+            forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshLoginStatus() }
+        }
     }
 
     /// Disables muting and restores volume before stopping playback reads.
@@ -76,6 +85,8 @@ final class AppState {
         muter.isOn = false
         watcher?.stop()
         watcher = nil
+        if let menuObserver { NotificationCenter.default.removeObserver(menuObserver) }
+        menuObserver = nil
     }
 
     /// Reads the status back rather than trusting the write, so a refused
@@ -83,7 +94,13 @@ final class AppState {
     func setLaunchAtLogin(_ on: Bool) {
         try? on ? SMAppService.mainApp.register()
                 : SMAppService.mainApp.unregister()
-        loginStatus = SMAppService.mainApp.status
+        refreshLoginStatus()
+    }
+
+    /// Assigns only on change, so an unchanged status does not redraw the menu.
+    private func refreshLoginStatus() {
+        let status = SMAppService.mainApp.status
+        if status != loginStatus { loginStatus = status }
     }
 
     // MARK: - Menu
