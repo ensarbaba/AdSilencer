@@ -26,7 +26,6 @@ final class AppState {
         didSet {
             defaults.set(isOn, forKey: Keys.on)
             muter.isOn = isOn
-            if !isOn { muter.restore() }
             watcher?.refresh()
         }
     }

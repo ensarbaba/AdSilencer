@@ -97,7 +97,7 @@ struct AppStateTests {
         #expect(await waitFor(5) { fake.soundVolume == 1 })
 
         state.isOn = false
-        #expect(fake.soundVolume == 65)
+        #expect(await waitFor { fake.soundVolume == 65 })
     }
 
     @Test("Shutting down mid-ad gives the volume back")
