@@ -146,7 +146,7 @@ final class SpotifyWatcher: Sendable {
         if shouldRefreshPlayerState(previousTrackID: previousTrackID) {
             refreshPlayerState()
         }
-        let reading = playback(access: .ok)
+        let reading = storedPlayback()
         if adPlayingChanged(reading) { onPlayback(reading) }
     }
 
@@ -162,7 +162,7 @@ final class SpotifyWatcher: Sendable {
         }
         refreshTrackID()
         refreshPlayerState()
-        let reading = playback(access: .ok)
+        let reading = storedPlayback()
         _ = adPlayingChanged(reading)
         onPlayback(reading)
     }
@@ -212,11 +212,12 @@ final class SpotifyWatcher: Sendable {
         }
     }
 
-    private func playback(access: SpotifyAccess) -> Playback {
-        state.withLock { state in
+    private func storedPlayback() -> Playback {
+        let isSpotifyRunning = spotify.isSpotifyRunning
+        return state.withLock { state in
             Playback(
-                isSpotifyRunning: true,
-                access: access,
+                isSpotifyRunning: isSpotifyRunning,
+                access: state.permission ?? .undetermined,
                 state: state.playerState,
                 trackID: state.trackID
             )
