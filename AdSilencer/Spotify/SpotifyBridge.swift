@@ -71,7 +71,7 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
         determineAccess(askUserIfNeeded: false)
     }
 
-    /// Waits for the user's Automation decision on the permission queue.
+    /// Waits for the user's Automation decision.
     func requestAccess() -> SpotifyAccess {
         determineAccess(askUserIfNeeded: true)
     }

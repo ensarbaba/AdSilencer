@@ -105,7 +105,7 @@ final class AdMuter: Sendable {
             break
         case .idle, .muting:
             // Not only while muting: a mute whose read-back never confirmed
-            // still wrote zero, so it still has to be undone.
+            // still turned the volume down, so it still has to be undone.
             let restored = restoreSavedVolume(&s)
             guard restored else { return }
         }
@@ -116,7 +116,7 @@ final class AdMuter: Sendable {
     /// False means still silent, so the caller should keep the saved value and
     /// try again.
     private func restoreSavedVolume(_ s: inout State) -> Bool {
-        guard let saved = s.saved, saved > 0 else { return true }
+        guard let saved = s.saved else { return true }
 
         let current = spotify.soundVolume
         guard current >= 0 else { return false }

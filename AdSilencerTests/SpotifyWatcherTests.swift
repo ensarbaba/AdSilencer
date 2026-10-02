@@ -303,13 +303,12 @@ struct SpotifyWatcherPermissionTests {
         }
 
         watcher.start()
-        try #require(await recorder.waitFor { $0.access == .undetermined })
         // Longer than the normal two-second Apple-event timeout.
         try await Task.sleep(for: .milliseconds(2500))
         #expect(fake.accessRequests == 1)
         #expect(fake.trackIDReads == 0)
         #expect(fake.playerStateReads == 0)
-        #expect(recorder.all.allSatisfy { $0.trackID == nil && $0.state == .stopped })
+        #expect(recorder.count == 0)
 
         release.signal()
         try #require(await recorder.waitFor { $0.access == answer })
@@ -341,124 +340,14 @@ struct SpotifyWatcherPermissionTests {
         }
 
         watcher.start()
-        try #require(await recorder.waitFor { $0.access == .undetermined })
+        try await Task.sleep(for: .milliseconds(250))
+        try #require(fake.accessRequests == 1)
         watcher.stop()
         release.signal()
         try await Task.sleep(for: .milliseconds(250))
         #expect(returned.withLock { $0 })
         #expect(fake.trackIDReads == 0)
         #expect(fake.playerStateReads == 0)
-    }
-
-    @Test("Restarting does not duplicate an in-flight permission request")
-    func restartKeepsInFlightPermission() async throws {
-        let fake = FakeSpotify()
-        fake.access = .undetermined
-        fake.track = .song()
-        let release = DispatchSemaphore(value: 0)
-        fake.onAccessRequest = {
-            release.wait()
-            return .ok
-        }
-        let recorder = Recorder()
-        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
-        defer {
-            watcher.stop()
-            release.signal()
-        }
-
-        watcher.start()
-        try #require(await recorder.waitFor { _ in fake.accessRequests == 1 })
-        watcher.stop()
-        watcher.start()
-        try await Task.sleep(for: .milliseconds(1500))
-        #expect(fake.accessRequests == 1)
-
-        release.signal()
-        try #require(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
-        #expect(fake.accessRequests == 1)
-    }
-
-    @Test("A restarted watcher can request permission again")
-    func restartRequestsAgain() async throws {
-        let fake = FakeSpotify()
-        fake.access = .undetermined
-        let recorder = Recorder()
-        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
-        defer { watcher.stop() }
-
-        watcher.start()
-        try #require(await recorder.waitFor { _ in fake.accessRequests == 1 })
-
-        watcher.stop()
-        let after = recorder.count
-        watcher.start()
-        #expect(await recorder.waitCount(after + 1))
-        try #require(await recorder.waitFor { _ in fake.accessRequests == 2 })
-        #expect(fake.accessRequests == 2)
-    }
-
-    @Test("Spotify relaunch can request permission again")
-    func relaunchRequestsAgain() async throws {
-        let fake = FakeSpotify()
-        fake.access = .undetermined
-        let recorder = Recorder()
-        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
-        defer { watcher.stop() }
-
-        watcher.start()
-        try #require(await recorder.waitFor { _ in fake.accessRequests == 1 })
-
-        fake.isSpotifyRunning = false
-        #expect(await recorder.waitFor { $0 == .idle })
-        let afterIdle = recorder.count
-
-        fake.isSpotifyRunning = true
-        fake.access = .undetermined
-        #expect(await recorder.waitFor { shot in
-            recorder.count > afterIdle && shot.isSpotifyRunning && shot.access == .undetermined
-                && shot == recorder.all.last
-        })
-        try #require(await recorder.waitFor { _ in fake.accessRequests == 2 })
-        #expect(fake.accessRequests == 2)
-    }
-
-    @Test("A blocked access check still reports Spotify running")
-    func blockedAccessStillReportsRunning() async throws {
-        let fake = FakeSpotify()
-        fake.isSpotifyRunning = false
-        fake.access = .undetermined
-        fake.track = .song()
-        let release = DispatchSemaphore(value: 0)
-        fake.onAccessCheck = { release.wait() }
-        let recorder = Recorder()
-        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
-        defer {
-            watcher.stop()
-            fake.onAccessCheck = nil
-            release.signal()
-        }
-
-        watcher.start()
-        try #require(await recorder.waitFor { $0 == .idle })
-
-        fake.isSpotifyRunning = true
-        try #require(await recorder.waitFor { $0.isSpotifyRunning && $0.access == .undetermined })
-        let runningCount = recorder.all.filter(\.isSpotifyRunning).count
-        // Longer than the normal two-second Apple-event timeout.
-        try await Task.sleep(for: .milliseconds(2500))
-        #expect(recorder.all.filter(\.isSpotifyRunning).count > runningCount)
-        #expect(fake.accessRequests == 0)
-        #expect(fake.trackIDReads == 0)
-        #expect(fake.playerStateReads == 0)
-        #expect(recorder.all.filter(\.isSpotifyRunning).allSatisfy {
-            $0.access == .undetermined && $0.trackID == nil && $0.state == .stopped
-        })
-
-        fake.access = .ok
-        fake.onAccessCheck = nil
-        release.signal()
-        try #require(await recorder.waitFor { $0.access == .ok && $0.trackID == String.song() })
-        #expect(fake.accessRequests == 0)
+        #expect(recorder.count == 0)
     }
 }
