@@ -24,6 +24,14 @@ struct AdSilencerApp: App {
             MenuBarLabel(state: delegate.state)
         }
         .menuBarExtraStyle(.menu)
+
+        Window("Welcome to AdSilencer", id: OnboardingView.windowID) {
+            OnboardingView(state: delegate.state)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .windowLevel(delegate.onboardingWindowLevel)
+        .defaultLaunchBehavior(delegate.onboardingLaunchBehavior)
     }
 }
 
@@ -35,8 +43,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var signalSources: [DispatchSourceSignal] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // As the test host, the app must not read the real Spotify, ask for
+        // permission, or open windows. The tests build their own AppState.
+        if isTestHost { return }
         state.start()
         catchTerminationSignals()
+    }
+
+    /// A double-click on the app while it runs shows the checklist again.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        state.isOnboardingRequested = true
+        return true
+    }
+
+    /// Spotify and System Settings come to the front during setup, so the
+    /// window floats above them. It does not float while macOS asks for
+    /// permission, because SwiftUI's floating level is above that dialog.
+    var onboardingWindowLevel: WindowLevel {
+        let playback = state.playback
+        if playback.isSpotifyRunning && playback.access == .undetermined { return .normal }
+        return state.needsSetup ? .floating : .normal
+    }
+
+    /// The onboarding window opens at launch until setup is complete.
+    var onboardingLaunchBehavior: SceneLaunchBehavior {
+        if isTestHost { return .suppressed }
+        return state.needsSetup ? .presented : .suppressed
+    }
+
+    private var isTestHost: Bool {
+        ProcessInfo.processInfo.environment.keys.contains("XCTestConfigurationFilePath")
     }
 
     func applicationWillTerminate(_ notification: Notification) {

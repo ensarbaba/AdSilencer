@@ -300,6 +300,7 @@ struct SpotifyWatcherPermissionTests {
         }
 
         watcher.start()
+        watcher.allowPermissionDialog(true)
         // Longer than the normal two-second Apple-event timeout.
         try await Task.sleep(for: .milliseconds(2500))
         #expect(fake.accessRequests == 1)
@@ -338,6 +339,7 @@ struct SpotifyWatcherPermissionTests {
         }
 
         watcher.start()
+        watcher.allowPermissionDialog(true)
         try await Task.sleep(for: .milliseconds(250))
         try #require(fake.accessRequests == 1)
         watcher.stop()
@@ -370,5 +372,19 @@ struct SpotifyWatcherPermissionTests {
         fake.onAccessCheck = nil
         release.signal()
         #expect(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
+    }
+
+    @Test("Without the onboarding window, an undetermined permission is never asked for")
+    func noDialogWithoutOnboarding() async throws {
+        let fake = FakeSpotify()
+        fake.access = .undetermined
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer { watcher.stop() }
+
+        watcher.start()
+        #expect(await recorder.waitFor { $0 == .waiting(.undetermined) })
+        try await Task.sleep(for: .milliseconds(1500))
+        #expect(fake.accessRequests == 0)
     }
 }

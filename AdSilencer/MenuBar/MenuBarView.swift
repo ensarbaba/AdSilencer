@@ -48,9 +48,19 @@ struct MenuBarView: View {
 
 /// Separate view so the icon follows changes in state.
 struct MenuBarLabel: View {
-    let state: AppState
+    @Bindable var state: AppState
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Image(state.menuBarImage)
+            .onChange(of: state.isOnboardingRequested) { _, isRequested in
+                if isRequested { showOnboarding() }
+            }
+    }
+
+    private func showOnboarding() {
+        state.isOnboardingRequested = false
+        openWindow(id: OnboardingView.windowID)
+        NSApp.activate()
     }
 }

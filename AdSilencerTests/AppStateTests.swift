@@ -173,4 +173,59 @@ struct AppStateTests {
         #expect(await waitFor(5) { state.statusLine == "Muting ad" })
         #expect(state.menuBarImage == "MenuBarOn")
     }
+
+    @Test("Granted access finishes setup, and the next launch remembers it")
+    func grantedAccessFinishesSetup() async {
+        let suite = UserDefaults(suiteName: "adsilencer.tests.\(UUID().uuidString)")!
+        let state = AppState(spotify: FakeSpotify(), defaults: suite)
+        #expect(state.needsSetup)
+        state.start()
+        #expect(await waitFor { state.needsSetup == false })
+        state.shutdown()
+
+        let nextLaunch = AppState(spotify: FakeSpotify(), defaults: suite)
+        #expect(nextLaunch.needsSetup == false)
+    }
+
+    @Test("Setup stays pending while access is denied")
+    func deniedAccessKeepsSetupPending() async {
+        let fake = FakeSpotify()
+        fake.access = .denied
+        let state = makeState(fake)
+        defer { state.shutdown() }
+        state.start()
+
+        #expect(await waitFor { state.statusLine == "No permission to control Spotify" })
+        #expect(state.needsSetup)
+    }
+
+    @Test("Losing access asks for setup again and opens the window")
+    func lostAccessReopensOnboarding() async {
+        let suite = UserDefaults(suiteName: "adsilencer.tests.\(UUID().uuidString)")!
+        let fake = FakeSpotify()
+        let state = AppState(spotify: fake, defaults: suite)
+        state.start()
+        #expect(await waitFor { state.needsSetup == false })
+
+        fake.access = .denied
+        #expect(await waitFor { state.needsSetup && state.isOnboardingRequested })
+        state.shutdown()
+
+        let nextLaunch = AppState(spotify: FakeSpotify(), defaults: suite)
+        #expect(nextLaunch.needsSetup)
+    }
+
+    @Test("The onboarding window lets macOS ask for permission")
+    func onboardingAllowsDialog() async {
+        let fake = FakeSpotify()
+        fake.access = .undetermined
+        let state = makeState(fake)
+        defer { state.shutdown() }
+        state.start()
+        #expect(await waitFor { state.statusLine == "Waiting for permission" })
+        #expect(fake.accessRequests == 0)
+
+        state.onboardingDidAppear()
+        #expect(await waitFor { fake.accessRequests > 0 })
+    }
 }

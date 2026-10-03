@@ -60,6 +60,7 @@ final class SpotifyWatcher: Sendable {
         var permission: SpotifyAccess = .undetermined
         var isCheckingPermission = false
         var isAskingForPermission = false
+        var isPermissionDialogAllowed = false
         var playerState: SpotifyPlayerState = .stopped
         var trackID: String?
     }
@@ -120,6 +121,13 @@ final class SpotifyWatcher: Sendable {
             return s.timers
         }
         timers.forEach { $0.cancel() }
+    }
+
+    /// The macOS consent dialog shows only while this is allowed, so that it
+    /// never appears without the onboarding window that explains it.
+    func allowPermissionDialog(_ isAllowed: Bool) {
+        state.withLock { $0.isPermissionDialogAllowed = isAllowed }
+        if isAllowed { refresh() }
     }
 
     /// Reads now rather than waiting for the next timer.
@@ -190,7 +198,8 @@ final class SpotifyWatcher: Sendable {
 
     private func runPermissionCheck() {
         var access = spotify.access
-        if access == .undetermined {
+        let mayAsk = state.withLock { $0.isPermissionDialogAllowed }
+        if access == .undetermined && mayAsk {
             state.withLock { $0.isAskingForPermission = true }
             access = spotify.requestAccess()
         }
