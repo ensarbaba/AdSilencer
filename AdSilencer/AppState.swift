@@ -90,12 +90,25 @@ final class AppState {
         menuObserver = nil
     }
 
+    /// Bound to the Launch at login switch in the menu.
+    var launchAtLogin: Bool {
+        get { loginStatus == .enabled }
+        set { setLaunchAtLogin(newValue) }
+    }
+
     /// Reads the status back rather than trusting the write, so a refused
     /// registration leaves the menu showing off.
     func setLaunchAtLogin(_ on: Bool) {
         try? on ? SMAppService.mainApp.register()
                 : SMAppService.mainApp.unregister()
         refreshLoginStatus()
+    }
+
+    func openAutomationSettings() {
+        let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+        )
+        if let url { NSWorkspace.shared.open(url) }
     }
 
     private func refreshLoginStatus() {

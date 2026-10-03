@@ -19,7 +19,7 @@ struct MenuBarView: View {
 
         if state.playback.access == .denied || state.playback.access == .undetermined {
             Button("Open Automation settings...") {
-                openAutomationSettings()
+                state.openAutomationSettings()
             }
         }
 
@@ -29,10 +29,7 @@ struct MenuBarView: View {
 
         Divider()
 
-        Toggle("Launch at login", isOn: Binding(
-            get: { state.loginStatus == .enabled },
-            set: { state.setLaunchAtLogin($0) }
-        ))
+        Toggle("Launch at login", isOn: $state.launchAtLogin)
 
         if state.loginStatus == .requiresApproval {
             Button("Open Login Items settings...") {
@@ -46,13 +43,6 @@ struct MenuBarView: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
-    }
-
-    private func openAutomationSettings() {
-        let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
-        )
-        if let url { NSWorkspace.shared.open(url) }
     }
 }
 
