@@ -13,6 +13,9 @@ visible in the diff.
 
 Comments: declarative and short. State what the thing is, in plain words.
 
+Explanations to the user: ASD-STE100 Simplified Technical English. One idea
+per sentence, active voice, common words with one meaning.
+
 ## Build
 
 Run `xcodegen generate` after adding or removing a file. Targets come from
