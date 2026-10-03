@@ -114,9 +114,9 @@ final class AppState {
         }
         if volumeHeldDown { return "Muting ad" }
         switch playback.state {
-        case .playing: return "Spotify is Playing"
-        case .paused: return "Paused"
-        case .stopped: return "Stopped"
+        case .playing: return "Spotify is playing"
+        case .paused: return "Spotify is paused"
+        case .stopped: return "Spotify is stopped"
         }
     }
 

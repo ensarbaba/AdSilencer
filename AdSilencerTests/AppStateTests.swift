@@ -144,7 +144,7 @@ struct AppStateTests {
         defer { state.shutdown() }
         state.start()
 
-        #expect(await waitFor { state.statusLine == "Spotify is Playing" })
+        #expect(await waitFor { state.statusLine == "Spotify is playing" })
     }
 
     @Test("Switching muting off drops the slash from the menu bar icon")
