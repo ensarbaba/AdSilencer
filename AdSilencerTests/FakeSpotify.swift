@@ -46,9 +46,6 @@ final class FakeSpotify: SpotifyControlling {
     var accessRequests: Int { state.withLock { $0.accessRequests } }
     var playerStateReads: Int { state.withLock { $0.playerStateReads } }
     var trackIDReads: Int { state.withLock { $0.trackIDReads } }
-    var playbackReads: Int {
-        state.withLock { $0.playerStateReads + $0.trackIDReads }
-    }
 
     var onAccessRequest: (@Sendable () -> SpotifyAccess)? {
         get { state.withLock { $0.onAccessRequest } }

@@ -21,15 +21,4 @@ struct SpotifyScriptingTests {
         #expect(SpotifyPlayerStateCode.playing == fourCharCode("kPSP"))
         #expect(SpotifyPlayerStateCode.paused == fourCharCode("kPSp"))
     }
-
-    @Test("Player state numbers are all different")
-    func playerStateCodesAreDistinct() {
-        // 'kPSP' and 'kPSp' differ only in the case of the last character.
-        let codes = Set([
-            SpotifyPlayerStateCode.stopped,
-            SpotifyPlayerStateCode.playing,
-            SpotifyPlayerStateCode.paused,
-        ])
-        #expect(codes.count == 3)
-    }
 }

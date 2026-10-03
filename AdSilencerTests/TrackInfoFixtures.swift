@@ -7,5 +7,5 @@
 
 extension String {
     static func song(id: String = "spotify:track:abc") -> String { id }
-    static func ad(id: String = "spotify:ad:xyz") -> String { id }
+    static func ad() -> String { "spotify:ad:xyz" }
 }
