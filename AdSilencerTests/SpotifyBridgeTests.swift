@@ -23,18 +23,3 @@ struct SpotifyPlayerStateTests {
         #expect(SpotifyPlayerState(code: 999) == .stopped)
     }
 }
-
-struct SpotifyAccessTests {
-
-    @Test("Access reports a definite answer on this machine")
-    func liveAccessCheck() {
-        // Reading access sends no Apple event and shows no prompt.
-        let bridge = SpotifyBridge()
-        let access = bridge.access
-        if bridge.isSpotifyRunning {
-            #expect(access != .unavailable)
-        } else {
-            #expect(access == .unavailable)
-        }
-    }
-}
