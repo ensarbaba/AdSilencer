@@ -1,7 +1,22 @@
 # AdSilencer
 
-A macOS menu bar app that mutes Spotify audio ads. It has no window and no Dock
-icon. Use the icon in the menu bar.
+A macOS menu bar app that mutes Spotify audio ads. It has no Dock icon. Use the
+icon in the menu bar.
+
+## Setup
+
+When you open AdSilencer for the first time, a setup window shows three steps:
+
+1. Install Spotify.
+2. Open Spotify.
+3. Allow AdSilencer to control Spotify. macOS asks while the setup window is
+   open. Click OK.
+
+Each step turns green when it is done. The setup window also opens at launch
+while the permission is missing, and when you open AdSilencer while it runs.
+
+If the window says that Spotify does not answer, quit and reopen Spotify. If
+the message stays, restart the Mac. This is a known macOS problem.
 
 ## How it works
 
@@ -25,9 +40,8 @@ interface (Apple events). It does not use the network or the Spotify Web API.
 
 - macOS 15 or later.
 - The Spotify desktop app.
-- Automation permission. The first time AdSilencer reads Spotify, macOS asks
-  if AdSilencer may control Spotify. Click OK. To change it later, go to
-  System Settings > Privacy & Security > Automation.
+- Automation permission. The setup window asks for it. To change it later, go
+  to System Settings > Privacy & Security > Automation.
 
 ## Build and test
 
