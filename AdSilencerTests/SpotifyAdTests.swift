@@ -1,5 +1,5 @@
 //
-//  TrackInfoTests.swift
+//  SpotifyAdTests.swift
 //  AdSilencerTests
 //
 

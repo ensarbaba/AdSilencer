@@ -1,5 +1,5 @@
 //
-//  TrackInfoFixtures.swift
+//  TrackIDFixtures.swift
 //  AdSilencerTests
 //
 //  Sample track ids for tests.

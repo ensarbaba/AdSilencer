@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		003FEDE49B09E2068CF81BAA /* SpotifyWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E8E90D73A0FE7B03A8FAACB /* SpotifyWatcherTests.swift */; };
-		10C9B702870AE0107AE70546 /* TrackInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5910DEC1D5EDB5088367E03 /* TrackInfoTests.swift */; };
 		17BA2083F808B0D9CBE447C6 /* SpotifyScriptingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12636A5E3B91BEDF815A2D1 /* SpotifyScriptingTests.swift */; };
 		21A944C8216E4A5B4FF31C61 /* AdMuterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61642A673077F7F5E21E6521 /* AdMuterTests.swift */; };
 		23508C268653DB310804CF4C /* AppStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E9D7635CB31C8308BDB861 /* AppStateTests.swift */; };
@@ -18,12 +17,13 @@
 		38B831AB6D4D94D905020191 /* AdSilencerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27214A7D4B70B0E7AE42111 /* AdSilencerApp.swift */; };
 		3B80FF5D1044F81C74150C41 /* SpotifyBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83EB1E44464CC322E6C4C780 /* SpotifyBridge.swift */; };
 		400782414B5F32CEA468EB45 /* FakeSpotify.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA57C781606C454D703C8415 /* FakeSpotify.swift */; };
-		5852146D433AB2D90045BDC4 /* TrackInfoFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5834CD5B025B8545F77764BF /* TrackInfoFixtures.swift */; };
 		6903B22D2BA3B6E99FE01A4B /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B23CD3E17F83C786288A2D33 /* AppState.swift */; };
 		81E0AE9D2A1B473113925E4A /* AdMuter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A669673F86EA57764ECAEC0 /* AdMuter.swift */; };
 		8880B9D59E702CCD077AB6E3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0F17F8A3E3633359621B0A4D /* Assets.xcassets */; };
 		A0D260DD7980A737B2C6C829 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12A7DD37498E04F638D5AA4 /* MenuBarView.swift */; };
 		A3A755FFEA700FE63B65FDAD /* SpotifyWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7368BF6BE4B3426414C9D4 /* SpotifyWatcher.swift */; };
+		F58B08A6265243B3A595E72A /* SpotifyAdTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6763F161BBB7160EAB499F59 /* SpotifyAdTests.swift */; };
+		FEC84FF814EE79428722A139 /* TrackIDFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5F0F52E48ABB7611F57E2F /* TrackIDFixtures.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,11 +42,12 @@
 		3FA0233571F85584B3C61B16 /* AdSilencerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AdSilencerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A669673F86EA57764ECAEC0 /* AdMuter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMuter.swift; sourceTree = "<group>"; };
 		4E8E90D73A0FE7B03A8FAACB /* SpotifyWatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyWatcherTests.swift; sourceTree = "<group>"; };
-		5834CD5B025B8545F77764BF /* TrackInfoFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfoFixtures.swift; sourceTree = "<group>"; };
 		60B43EC887C865C3359A1D14 /* SpotifyBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyBridgeTests.swift; sourceTree = "<group>"; };
 		61642A673077F7F5E21E6521 /* AdMuterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdMuterTests.swift; sourceTree = "<group>"; };
+		6763F161BBB7160EAB499F59 /* SpotifyAdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyAdTests.swift; sourceTree = "<group>"; };
 		7B7368BF6BE4B3426414C9D4 /* SpotifyWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyWatcher.swift; sourceTree = "<group>"; };
 		83EB1E44464CC322E6C4C780 /* SpotifyBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyBridge.swift; sourceTree = "<group>"; };
+		8C5F0F52E48ABB7611F57E2F /* TrackIDFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackIDFixtures.swift; sourceTree = "<group>"; };
 		A8E9D7635CB31C8308BDB861 /* AppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateTests.swift; sourceTree = "<group>"; };
 		AA57C781606C454D703C8415 /* FakeSpotify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeSpotify.swift; sourceTree = "<group>"; };
 		B23CD3E17F83C786288A2D33 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -57,7 +58,6 @@
 		EB9EDBB0ECB19543EBB79C23 /* AdSilencer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AdSilencer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F12636A5E3B91BEDF815A2D1 /* SpotifyScriptingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyScriptingTests.swift; sourceTree = "<group>"; };
 		F2C7594AB83831D95DF2F342 /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
-		F5910DEC1D5EDB5088367E03 /* TrackInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfoTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,11 +130,11 @@
 				61642A673077F7F5E21E6521 /* AdMuterTests.swift */,
 				A8E9D7635CB31C8308BDB861 /* AppStateTests.swift */,
 				AA57C781606C454D703C8415 /* FakeSpotify.swift */,
+				6763F161BBB7160EAB499F59 /* SpotifyAdTests.swift */,
 				60B43EC887C865C3359A1D14 /* SpotifyBridgeTests.swift */,
 				F12636A5E3B91BEDF815A2D1 /* SpotifyScriptingTests.swift */,
 				4E8E90D73A0FE7B03A8FAACB /* SpotifyWatcherTests.swift */,
-				5834CD5B025B8545F77764BF /* TrackInfoFixtures.swift */,
-				F5910DEC1D5EDB5088367E03 /* TrackInfoTests.swift */,
+				8C5F0F52E48ABB7611F57E2F /* TrackIDFixtures.swift */,
 			);
 			path = AdSilencerTests;
 			sourceTree = "<group>";
@@ -262,11 +262,11 @@
 				21A944C8216E4A5B4FF31C61 /* AdMuterTests.swift in Sources */,
 				23508C268653DB310804CF4C /* AppStateTests.swift in Sources */,
 				400782414B5F32CEA468EB45 /* FakeSpotify.swift in Sources */,
+				F58B08A6265243B3A595E72A /* SpotifyAdTests.swift in Sources */,
 				3685151D12DB09DA13B73B2C /* SpotifyBridgeTests.swift in Sources */,
 				17BA2083F808B0D9CBE447C6 /* SpotifyScriptingTests.swift in Sources */,
 				003FEDE49B09E2068CF81BAA /* SpotifyWatcherTests.swift in Sources */,
-				5852146D433AB2D90045BDC4 /* TrackInfoFixtures.swift in Sources */,
-				10C9B702870AE0107AE70546 /* TrackInfoTests.swift in Sources */,
+				FEC84FF814EE79428722A139 /* TrackIDFixtures.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
