@@ -32,8 +32,8 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
 - `player state` arrives as four characters packed into an integer, such as
   `0x6B505370` for `kPSp`, paused. It is not the `cocoa integer-value` shown in
   the dictionary.
-- `duration` is milliseconds. The dictionary documents seconds.
-- Writing `sound volume` reads back one step lower for every value from 1 to 99.
+- Writing `sound volume` reads back one step lower for every value from 1 to 99,
+  except 20, 40, 60 and 80, which read back exactly (measured on 1.3.0.277).
   Restoring a saved volume without correcting for this walks the volume down on
   every ad.
 - Each property read is a separate Apple event costing roughly 33 ms, because
@@ -45,8 +45,16 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
 - The `sdp`-generated ScriptingBridge header fails to link in Swift: it declares
   a class nothing defines. The runtime class is `SBScriptableApplication`. Use
   hand-written `@objc` protocols instead.
-- App Sandbox stays off. Sandboxed processes receive
-  `com.spotify.client.PlaybackStateChanged` with `userInfo` stripped.
+- App Sandbox stays off. Sandboxed processes cannot drive Spotify through Apple
+  events.
+
+### Not used by current code
+
+Still true, but the app no longer reads these.
+
+- `duration` is milliseconds. The dictionary documents seconds.
+- Sandboxed processes receive `com.spotify.client.PlaybackStateChanged` with
+  `userInfo` stripped.
 - Spotify rewrites `ad-state-storage.bnk` under
   `~/Library/Application Support/Spotify/Users/<account>-user/` when ad state
   changes. It saves atomically, so a `DispatchSource` watch on `.write` alone
