@@ -4,8 +4,9 @@
 //
 //  Menu bar app. LSUIElement, so no Dock icon and no windows.
 //
-//  Quitting puts Spotify's volume back, including a kill from Xcode or
-//  the shell. Otherwise an ad in progress would leave Spotify silent.
+//  Quitting puts Spotify's volume back, including `kill` (SIGTERM) and
+//  Ctrl-C (SIGINT). Otherwise an ad in progress would leave Spotify silent.
+//  `kill -9` and a debugger stop send SIGKILL, which no app can catch.
 //
 
 import AppKit
@@ -42,9 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state.shutdown()
     }
 
-    /// Quitting normally runs applicationWillTerminate, but `kill` and Xcode's
-    /// stop button do not. Without this, being killed mid-ad would leave
-    /// Spotify silent with nothing running to restore it.
+    /// Quitting normally runs applicationWillTerminate, but SIGTERM and SIGINT
+    /// do not. Without this, being killed mid-ad would leave Spotify silent
+    /// with nothing running to restore it.
     private func catchTerminationSignals() {
         for number in [SIGTERM, SIGINT] {
             signal(number, SIG_IGN)
