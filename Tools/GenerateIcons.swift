@@ -37,10 +37,6 @@ func squirclePath(in rect: CGRect) -> CGPath {
     return p
 }
 
-/// Tilt applied to the whole megaphone. The system volume icon is always level,
-/// so tipping this one is the cheapest way to tell them apart.
-let megaphoneTilt: CGFloat = 0  // tilting separated the parts; kept level
-
 /// The cone body, narrow at the left, flaring right, stopping short of the rim.
 func hornPath(_ u: (CGFloat) -> CGFloat, _ v: (CGFloat) -> CGFloat) -> CGPath {
     let p = CGMutablePath()
@@ -141,12 +137,8 @@ func drawAppIcon(size: CGFloat) -> NSBitmapImageRep {
     )
     ctx.restoreGState()
 
-    // Megaphone, tilted as a group
+    // Megaphone
     ctx.saveGState()
-    let pivot = CGPoint(x: u(120), y: v(128))
-    ctx.translateBy(x: pivot.x, y: pivot.y)
-    ctx.rotate(by: megaphoneTilt)
-    ctx.translateBy(x: -pivot.x, y: -pivot.y)
 
     let metal = CGGradient(colorsSpace: space, colors: [
         NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 1).cgColor,
