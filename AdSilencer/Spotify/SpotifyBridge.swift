@@ -105,11 +105,8 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
         if spotifyConnection == nil {
             spotifyConnection = SBApplication(bundleIdentifier: Self.bundleID)
             spotifyConnection?.timeout = Self.eventTimeoutTicks
-            // sendMode is an integer bit mask. |= turns on 0x00020000 and leaves
-            // the default 0x3 bits, which wait for Spotify's reply. 0x00020000
-            // makes the event fail when Automation is not granted.
-            // ?. skips the write when spotifyConnection is nil.
-            // Only requestAccess() may show the dialog.
+            // |= keeps the default bits that wait for Spotify's reply. The added flag
+            // makes events fail instead of prompting; only requestAccess() may prompt.
             spotifyConnection?.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
         }
     }

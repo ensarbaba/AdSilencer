@@ -20,10 +20,14 @@ DMG="$BUILD/AdSilencer.dmg"
 cd "$(dirname "$0")/.."
 rm -rf "$BUILD"
 
+echo "Generating the project..."
+xcodegen generate --quiet
+
+# -quiet still prints warnings and errors, so a failed build says why.
 echo "Building..."
 xcodebuild -scheme AdSilencer -configuration Release \
     -derivedDataPath "$BUILD/dd" CONFIGURATION_BUILD_DIR="$BUILD/Release" \
-    build >/dev/null
+    build -quiet
 
 echo "Verifying the signature..."
 codesign --verify --strict --deep "$APP"
