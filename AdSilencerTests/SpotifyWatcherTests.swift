@@ -114,9 +114,6 @@ struct SpotifyWatcherPollingTests {
 
     @Test("A change made with no signal is still noticed")
     func pollingNoticesChanges() async {
-        // Nothing tells the watcher anything. Spotify's notification never
-        // fires and the ad file lags, so the timer is the only thing that can
-        // catch an ad starting.
         let fake = FakeSpotify()
         fake.track = .song()
         let recorder = Recorder()
