@@ -305,7 +305,8 @@ struct SpotifyWatcherPermissionTests {
         #expect(fake.accessRequests == 1)
         #expect(fake.trackIDReads == 0)
         #expect(fake.playerStateReads == 0)
-        #expect(recorder.count == 0)
+        #expect(recorder.count > 0)
+        #expect(recorder.all.allSatisfy { $0 == .waiting(.undetermined) })
 
         release.signal()
         try #require(await recorder.waitFor { $0.access == answer })
@@ -346,5 +347,28 @@ struct SpotifyWatcherPermissionTests {
         #expect(fake.trackIDReads == 0)
         #expect(fake.playerStateReads == 0)
         #expect(recorder.count == 0)
+    }
+
+    @Test("A permission check that never answers does not stop the watcher")
+    func hungCheckKeepsReporting() async throws {
+        let fake = FakeSpotify()
+        fake.track = .song()
+        let release = DispatchSemaphore(value: 0)
+        fake.onAccessCheck = { release.wait() }
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer {
+            watcher.stop()
+            fake.onAccessCheck = nil
+            release.signal()
+        }
+
+        watcher.start()
+        #expect(await recorder.waitFor { $0 == .waiting(.unavailable) })
+        #expect(fake.trackIDReads == 0)
+
+        fake.onAccessCheck = nil
+        release.signal()
+        #expect(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
     }
 }

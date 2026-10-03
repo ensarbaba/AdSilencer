@@ -8,8 +8,8 @@
 //  Permission, and playing / paused / stopped, are read once a second
 //  for the menu.
 //
-//  Asking for Automation permission shows a dialog and waits for the
-//  answer. Nothing can be read from Spotify before that anyway.
+//  The Automation permission check runs on its own queue with a time limit.
+//  The macOS call can hang forever, and the consent dialog waits for the user.
 //
 
 import Foundation
@@ -34,6 +34,11 @@ struct Playback: Equatable, Sendable {
         isSpotifyRunning: false, access: .unavailable, state: .stopped, trackID: nil
     )
 
+    /// Spotify runs, but the app cannot read it with this access.
+    static func waiting(_ access: SpotifyAccess) -> Playback {
+        Playback(isSpotifyRunning: true, access: access, state: .stopped, trackID: nil)
+    }
+
     /// An ad still counts while paused, so a pause does not unmute.
     var isAdPlaying: Bool {
         trackID?.isSpotifyAd == true && state != .stopped
@@ -46,17 +51,26 @@ final class SpotifyWatcher: Sendable {
     private static let adInterval: TimeInterval = 0.1
     /// Time between player-state reports and permission checks.
     private static let statusInterval: TimeInterval = 1
+    /// Longest wait for a permission check. A normal check takes about 0.1 s.
+    private static let permissionTimeout: TimeInterval = 1
 
     private struct State {
         var timers: [DispatchSourceTimer] = []
         var isPollingSpotify = false
         var permission: SpotifyAccess = .undetermined
+        var isCheckingPermission = false
+        var isAskingForPermission = false
         var playerState: SpotifyPlayerState = .stopped
         var trackID: String?
     }
 
     /// Playback reads happen here, so a slow reply cannot block the UI.
     private let queue = DispatchQueue(label: "com.ensarbaba.AdSilencer.spotify")
+    /// Concurrent, so a check for a restarted Spotify can run while a check for
+    /// the old one still hangs.
+    private let permissionQueue = DispatchQueue(
+        label: "com.ensarbaba.AdSilencer.spotify.permission", attributes: .concurrent
+    )
     private let spotify: SpotifyControlling
     private let onPlayback: @Sendable (Playback) -> Void
     private let state = Mutex(State())
@@ -129,25 +143,62 @@ final class SpotifyWatcher: Sendable {
     private func readPlayerStatus() {
         guard state.withLock({ $0.isPollingSpotify }) else { return }
         guard spotify.isSpotifyRunning else {
-            state.withLock { $0.permission = .undetermined }
+            // A check that hangs on a quit Spotify never returns. Allow a new one.
+            state.withLock {
+                $0.permission = .undetermined
+                $0.isCheckingPermission = false
+                $0.isAskingForPermission = false
+            }
             onPlayback(.idle)
             return
         }
-        var permission = spotify.access
-        // Shows the consent dialog and waits for the answer, long enough for
-        // stop() to run.
-        if permission == .undetermined { permission = spotify.requestAccess() }
-        state.withLock { $0.permission = permission }
+        let permission = checkPermission()
+        // stop() can run while this read waits for the check.
         guard state.withLock({ $0.isPollingSpotify }) else { return }
         guard permission == .ok else {
-            onPlayback(Playback(
-                isSpotifyRunning: true, access: permission, state: .stopped, trackID: nil
-            ))
+            onPlayback(.waiting(permission))
             return
         }
         refreshTrackID()
         refreshPlayerState()
         onPlayback(storedPlayback())
+    }
+
+    /// macOS can leave its permission call waiting forever, a known bug. So the
+    /// check runs on `permissionQueue`, one at a time, and this read waits for
+    /// it at most `permissionTimeout`. The consent dialog has no time limit.
+    private func checkPermission() -> SpotifyAccess {
+        let startsCheck = state.withLock { s -> Bool in
+            if s.isCheckingPermission { return false }
+            s.isCheckingPermission = true
+            return true
+        }
+        if startsCheck {
+            let answered = DispatchSemaphore(value: 0)
+            permissionQueue.async { [weak self] in
+                self?.runPermissionCheck()
+                answered.signal()
+            }
+            _ = answered.wait(timeout: .now() + Self.permissionTimeout)
+        }
+        return state.withLock { s in
+            if s.isAskingForPermission { return .undetermined }
+            if s.isCheckingPermission && s.permission == .undetermined { return .unavailable }
+            return s.permission
+        }
+    }
+
+    private func runPermissionCheck() {
+        var access = spotify.access
+        if access == .undetermined {
+            state.withLock { $0.isAskingForPermission = true }
+            access = spotify.requestAccess()
+        }
+        state.withLock {
+            $0.permission = access
+            $0.isCheckingPermission = false
+            $0.isAskingForPermission = false
+        }
     }
 
     private func refreshTrackID() {
