@@ -59,9 +59,9 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
     private var spotifyConnection: SBApplication?
 
     var isSpotifyRunning: Bool {
-        !NSRunningApplication
+        NSRunningApplication
             .runningApplications(withBundleIdentifier: Self.bundleID)
-            .isEmpty
+            .isNotEmpty
     }
 
     /// A denied app looks the same as an idle one without this check:
@@ -146,7 +146,7 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
             guard let spotifyConnection else { return nil }
             // Spotify returns a live object even when nothing is loaded. A missing
             // or empty id is how that appears.
-            guard let id = (spotifyConnection as SpotifyScriptingApplication).currentTrack?.id, !id.isEmpty
+            guard let id = (spotifyConnection as SpotifyScriptingApplication).currentTrack?.id, id.isNotEmpty
             else { return nil }
             return id
         }
