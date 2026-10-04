@@ -50,12 +50,16 @@ final class AppState {
     /// onboarding window, because only a view can call `openWindow`.
     var isOnboardingRequested = false
 
+    /// A newer release on GitHub. The menu shows it.
+    private(set) var update: GitHubRelease?
+
     private let spotify: SpotifyControlling
     private let defaults: UserDefaults
     private let muter: AdMuter
     @ObservationIgnored private var watcher: SpotifyWatcher?
     @ObservationIgnored private var isOnboardingVisible = false
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private var updateCheck: Task<Void, Error>?
 
     init(spotify: SpotifyControlling = SpotifyBridge(), defaults: UserDefaults = .standard) {
         self.spotify = spotify
@@ -94,6 +98,8 @@ final class AppState {
                     MainActor.assumeIsolated { self?.refreshSystemStatus() }
                 }
             }
+
+        startUpdateChecks()
     }
 
     /// Disables muting and restores volume before stopping playback reads.
@@ -104,6 +110,8 @@ final class AppState {
         watcher = nil
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []
+        updateCheck?.cancel()
+        updateCheck = nil
     }
 
     /// The onboarding window calls these. macOS asks for permission only while
@@ -151,6 +159,26 @@ final class AppState {
     private func refreshSystemStatus() {
         loginStatus = SMAppService.mainApp.status
         isSpotifyInstalled = Self.spotifyAppURL != nil
+    }
+
+    /// Asks GitHub at launch and then once a day. After a failed check it asks
+    /// again in an hour, because at login the network can still be down.
+    /// Local builds have no build number, so they never ask.
+    private func startUpdateChecks() {
+        guard let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+              let installedBuild = Int(build)
+        else { return }
+
+        updateCheck = Task { [weak self] in
+            while true {
+                let release = try? await GitHubRelease.latest()
+                if let release, let releaseBuild = release.buildNumber, releaseBuild > installedBuild {
+                    self?.update = release
+                }
+                // Throws when shutdown() cancels the task, which ends the loop.
+                try await Task.sleep(for: .seconds(release == nil ? 60 * 60 : 24 * 60 * 60))
+            }
+        }
     }
 
     /// Keeps `needsSetup` equal to the last known permission. While Spotify is

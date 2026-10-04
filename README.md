@@ -27,7 +27,8 @@ the message stays, restart the Mac. This is a known macOS problem.
 ## How it works
 
 AdSilencer talks to the Spotify desktop app through Spotify's AppleScript
-interface (Apple events). It does not use the network or the Spotify Web API.
+interface (Apple events). It does not use the Spotify Web API. Its only
+network request is the update check.
 
 - Every 100 ms, it reads the ID of the current track. An ad has an ID that
   starts with `spotify:ad:`.
@@ -41,6 +42,9 @@ interface (Apple events). It does not use the network or the Spotify Web API.
 - When you switch muting off or quit the app, it puts the volume back.
 - Once a second, it checks the Automation permission and reads playing,
   paused or stopped for the menu.
+- At launch and once a day, it asks GitHub for the newest release. If that
+  release is newer, the menu shows "Update available". Local builds do not
+  ask.
 
 ## Requirements
 

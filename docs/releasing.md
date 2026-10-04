@@ -20,6 +20,11 @@ The version comes from the UTC date:
 The workflow creates the tag only after notarization. A failed run leaves no
 tag. Local builds have no version, so the menu shows no version line.
 
+The app's update check reads the build number from the tag of the latest
+release. If you change the tag format, change `GitHubRelease.buildNumber` too.
+The check uses the GitHub API without a token, so it works only while the
+repository is public.
+
 ## First-time setup
 
 1. In the repository settings, create the environment `release`. Add these

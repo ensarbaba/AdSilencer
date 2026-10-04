@@ -39,6 +39,12 @@ struct MenuBarView: View {
 
         Divider()
 
+        if let update = state.update {
+            Button("Update available: \(update.tag)") {
+                NSWorkspace.shared.open(update.url)
+            }
+        }
+
         if let appVersion {
             Text("Version \(appVersion)")
         }
