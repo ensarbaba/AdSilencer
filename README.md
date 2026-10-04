@@ -3,6 +3,12 @@
 A macOS menu bar app that mutes Spotify audio ads. It has no Dock icon. Use the
 icon in the menu bar.
 
+## Download
+
+Download the DMG from the
+[latest release](https://github.com/ensarbaba/AdSilencer/releases/latest).
+Open it and drag AdSilencer to Applications.
+
 ## Setup
 
 When you open AdSilencer for the first time, a setup window shows three steps:
@@ -57,10 +63,7 @@ To run the app, open `AdSilencer.xcodeproj` in Xcode.
 
 ## Release
 
-`Tools/release.sh` builds, signs, notarizes and staples a DMG. It needs a
-Developer ID Application certificate and a notary profile named
-`AdSilencerNotary`. To make the profile, run `xcrun notarytool
-store-credentials`.
+The maintainer releases through CI. See [docs/releasing.md](docs/releasing.md).
 
 ## Spotify's terms
 
