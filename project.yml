@@ -10,8 +10,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    # No version here. The release job sets MARKETING_VERSION and
+    # CURRENT_PROJECT_VERSION from the date.
     DEAD_CODE_STRIPPING: YES
 
 targets:

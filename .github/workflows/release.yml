@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  push:
+    branches: [release]
+
+# A newer push replaces a run that is still in progress.
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    environment: release
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    # macOS minutes cost 10 times Linux minutes on a private repo. A hung
+    # notarization must not run until the 6 hour default.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # All tags, to number a second release on the same day.
+          fetch-depth: 0
+
+      - name: Compute the version
+        run: |
+          # One date call, so the values cannot fall on both sides of midnight.
+          read -r day version build_day <<< "$(date -u '+%Y.%m.%d %Y.%-m.%-d %Y%m%d')"
+          count=$(git tag --list "v$day" "v$day.*" | wc -l | tr -d ' ')
+          n=$((count + 1))
+          if [ "$n" -eq 1 ]; then tag="v$day"; else tag="v$day.$n"; fi
+          build="$build_day$(printf %02d "$n")"
+          echo "Tag $tag, version $version, build $build"
+          {
+            echo "TAG=$tag"
+            echo "APP_VERSION=$version"
+            echo "APP_BUILD=$build"
+          } >> "$GITHUB_ENV"
+
+      - name: Install tools
+        run: brew install xcodegen create-dmg
+
+      - name: Generate the project
+        run: xcodegen generate
+
+      - name: Test
+        run: xcodebuild test -scheme AdSilencer -destination 'platform=macOS'
+
+      - name: Import the signing certificate
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(openssl rand -base64 24)
+          printf '%s' "$DEVELOPER_ID_P12" | base64 --decode -o "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" \
+            -P "$DEVELOPER_ID_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/certificate.p12"
+          # Lets codesign use the key without a password prompt.
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain"
+          # Xcode finds the identity only in keychains on the search list.
+          security list-keychains -d user -s "$keychain"
+          echo "KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          xcodebuild -scheme AdSilencer -configuration Release build \
+            MARKETING_VERSION="$APP_VERSION" \
+            CURRENT_PROJECT_VERSION="$APP_BUILD" \
+            CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/build" \
+            OTHER_CODE_SIGN_FLAGS="--timestamp --keychain $KEYCHAIN"
+          echo "APP=$RUNNER_TEMP/build/AdSilencer.app" >> "$GITHUB_ENV"
+
+      - name: Check the app
+        run: |
+          codesign --verify --strict --deep "$APP"
+          # Notarizing needs the hardened runtime. Controlling Spotify needs
+          # the Apple events entitlement.
+          codesign -dv "$APP" 2>&1 | grep 'flags=.*runtime'
+          codesign -d --entitlements - "$APP" | grep apple-events
+          plist="$APP/Contents/Info.plist"
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$plist")" = "$APP_VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$plist")" = "$APP_BUILD"
+
+      - name: Notarize and package
+        env:
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$ASC_API_KEY" > "$key"
+
+          # notarytool exits 0 even when Apple rejects the upload, so read the
+          # status and print the reasons rather than stapling a ticket that
+          # does not exist.
+          notarize() {
+            local result
+            result=$(xcrun notarytool submit "$1" --key "$key" --key-id "$ASC_KEY_ID" \
+              --issuer "$ASC_ISSUER_ID" --wait --output-format json)
+            echo "$result"
+            if [ "$(jq -r .status <<< "$result")" != Accepted ]; then
+              xcrun notarytool log "$(jq -r .id <<< "$result")" --key "$key" \
+                --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID"
+              exit 1
+            fi
+          }
+
+          # The app is notarized and stapled on its own first. Stapling only the
+          # disk image leaves the copy dragged out of it without a ticket, so it
+          # needs a network check to open.
+          ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/AdSilencer.zip"
+          notarize "$RUNNER_TEMP/AdSilencer.zip"
+          xcrun stapler staple "$APP"
+
+          mkdir "$RUNNER_TEMP/dmg"
+          ditto "$APP" "$RUNNER_TEMP/dmg/AdSilencer.app"
+          dmg="$RUNNER_TEMP/AdSilencer.dmg"
+          create-dmg --volname AdSilencer --window-size 540 380 --icon-size 128 \
+            --icon AdSilencer.app 140 190 --app-drop-link 400 190 \
+            "$dmg" "$RUNNER_TEMP/dmg"
+          codesign --sign "Developer ID Application" --timestamp --keychain "$KEYCHAIN" "$dmg"
+          notarize "$dmg"
+          xcrun stapler staple "$dmg"
+
+          # Gatekeeper's own answer, rather than trusting the steps above.
+          xcrun stapler validate "$APP"
+          xcrun stapler validate "$dmg"
+          spctl -a -vvv "$APP"
+          echo "DMG=$dmg" >> "$GITHUB_ENV"
+
+      # gh creates the tag here, after notarization, so a failed run leaves
+      # no tag behind.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(shasum -a 256 "$DMG" | cut -d ' ' -f 1)
+          gh release create "$TAG" "$DMG" --target "$GITHUB_SHA" \
+            --title "$TAG" --notes "SHA-256: $sha" --latest
+
+      - name: Clean up
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/certificate.p12" "$RUNNER_TEMP/AuthKey.p8"

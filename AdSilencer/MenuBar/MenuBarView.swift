@@ -39,10 +39,22 @@ struct MenuBarView: View {
 
         Divider()
 
+        if let appVersion {
+            Text("Version \(appVersion)")
+        }
+
         Button("Quit AdSilencer") {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    /// Only release builds have a version. Local builds leave it empty.
+    private var appVersion: String? {
+        guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+              version.isNotEmpty
+        else { return nil }
+        return version
     }
 }
 
