@@ -13,9 +13,11 @@ The version comes from the UTC date:
 
 - The tag is `v2026.10.04`. A second release on the same day is
   `v2026.10.04.2`.
-- The version is `2026.10.4`. The menu shows it.
+- The version is `2026.10.4`. Releases of the same day share it.
 - The build number is `2026100401`. The last two digits count the releases of
   the day.
+
+The menu shows both, such as `Version 2026.10.4 (2026100402)`.
 
 The workflow creates the tag only after notarization. A failed run leaves no
 tag. Local builds have no version, so the menu shows no version line.

@@ -55,12 +55,14 @@ struct MenuBarView: View {
         .keyboardShortcut("q")
     }
 
-    /// Only release builds have a version. Local builds leave it empty.
+    /// Only release builds have a version. Local builds leave it empty. The
+    /// build number tells apart two releases of the same day.
     private var appVersion: String? {
         guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+              let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
               version.isNotEmpty
         else { return nil }
-        return version
+        return "\(version) (\(build))"
     }
 }
 
