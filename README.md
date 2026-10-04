@@ -67,6 +67,11 @@ The maintainer releases through CI. See [docs/releasing.md](docs/releasing.md).
 
 ## Spotify's terms
 
-Spotify's User Guidelines prohibit tools that block or circumvent ads. Read
+AdSilencer does not block or skip ads. The ad still plays. AdSilencer only
+sets Spotify's volume to 1 until the ad ends.
+
+Spotify's User Guidelines prohibit tools that block or circumvent ads. They
+state no exception for muting, and the research found no statement from Spotify
+about muting. Read
 [the research notes](docs/research/2026-09-05-spotify-ad-detection.md) before
 you distribute this app.
