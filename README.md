@@ -21,8 +21,9 @@ When you open AdSilencer for the first time, a setup window shows three steps:
 Each step turns green when it is done. The setup window also opens at launch
 while the permission is missing, and when you open AdSilencer while it runs.
 
-If the window says that Spotify does not answer, quit and reopen Spotify. If
-the message stays, restart the Mac. This is a known macOS problem.
+If the window says that macOS does not answer, click Restart Apple Events and
+type your administrator password. If the message stays, restart the Mac. This
+is a known macOS problem.
 
 ## How it works
 

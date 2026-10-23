@@ -147,6 +147,20 @@ final class AppState {
         if let url { NSWorkspace.shared.open(url) }
     }
 
+    /// Restarts appleeventsd, the macOS service that answers the permission
+    /// check. On some Macs it stops answering, and only a restart helps. macOS
+    /// asks for an administrator password. After the restart, the waiting check
+    /// returns by itself and macOS shows the consent dialog. Runs on the main
+    /// thread, which waits while the password dialog shows.
+    func restartAppleEvents() {
+        let source = """
+            do shell script "/usr/bin/killall appleeventsd" \
+            with prompt "AdSilencer needs to restart a macOS service that does not answer." \
+            with administrator privileges
+            """
+        _ = NSAppleScript(source: source)?.executeAndReturnError(nil)
+    }
+
     func openSpotify() {
         guard let url = Self.spotifyAppURL else { return }
         NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())

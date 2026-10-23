@@ -42,6 +42,14 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
 - Without the Automation grant, `playerState` returns 0 and `currentTrack`
   returns nil, which is indistinguishable from stopped and idle. AppleScript
   reports error `-1743`.
+- `AEDeterminePermissionToAutomateTarget` can hang inside macOS and never
+  return. Seen on two Macs, one a fresh install. Quitting Spotify does not
+  help, because the next call hangs too. `sudo killall appleeventsd` or a
+  restart fixes it. After the restart, the waiting check returns by itself and
+  the consent dialog appears at once, so the watcher needs no reset. The
+  onboarding button "Restart Apple Events" runs that command with the
+  administrator password. Do not retry the check in a loop: each hung call
+  holds a thread forever.
 - The `sdp`-generated ScriptingBridge header fails to link in Swift: it declares
   a class nothing defines. The runtime class is `SBScriptableApplication`. Use
   hand-written `@objc` protocols instead.
