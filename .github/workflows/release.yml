@@ -145,8 +145,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sha=$(shasum -a 256 "$DMG" | cut -d ' ' -f 1)
+          # Commits since the previous release. The first release lists all.
+          range=HEAD
+          if previous=$(git describe --tags --abbrev=0 2>/dev/null); then range="$previous..HEAD"; fi
+          notes=$(printf '%s\n\nSHA-256: %s' "$(git log --format='- %s' "$range")" "$sha")
           gh release create "$TAG" "$DMG" --target "$GITHUB_SHA" \
-            --title "$TAG" --notes "SHA-256: $sha" --latest
+            --title "$TAG" --notes "$notes" --latest
 
       - name: Clean up
         if: always()
