@@ -51,6 +51,7 @@ enum SpotifyAccess: Equatable {
 
 protocol SpotifyControlling: AnyObject, Sendable {
     var isSpotifyRunning: Bool { get }
+    var isSpotifyReady: Bool { get }
     var access: SpotifyAccess { get }
     var playerState: SpotifyPlayerState { get }
     /// A negative reading means Spotify could not report its volume.
@@ -64,17 +65,51 @@ protocol SpotifyControlling: AnyObject, Sendable {
 final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
 
     static let bundleID = "com.spotify.client"
+    private static let minimumReadyAge: TimeInterval = 3
+    private static let maximumReadyWait: TimeInterval = 30
 
     /// How long one Apple event may take. Apple counts this in 1/60ths of
     /// a second, so 120 is two seconds. A normal reply takes about 33 ms.
     private static let eventTimeoutTicks = 120
+    private let spotifyProcessLock = NSLock()
+    private var observedProcessID: pid_t?
+    private var observedProcessDate: Date?
     private let spotifyConnectionLock = NSLock()
     private var spotifyConnection: SBApplication?
 
     var isSpotifyRunning: Bool {
+        spotifyApplication != nil
+    }
+
+    var isSpotifyReady: Bool {
+        guard let application = spotifyApplication else { return false }
+        return Self.isReady(
+            isFinishedLaunching: application.isFinishedLaunching,
+            processAge: processAge(for: application)
+        )
+    }
+
+    static func isReady(isFinishedLaunching: Bool, processAge: TimeInterval) -> Bool {
+        processAge >= maximumReadyWait
+            || (isFinishedLaunching && processAge >= minimumReadyAge)
+    }
+
+    private var spotifyApplication: NSRunningApplication? {
         NSRunningApplication
             .runningApplications(withBundleIdentifier: Self.bundleID)
-            .isNotEmpty
+            .first
+    }
+
+    private func processAge(for application: NSRunningApplication) -> TimeInterval {
+        let now = Date()
+        let firstObserved = spotifyProcessLock.withLock { () -> Date in
+            if observedProcessID != application.processIdentifier {
+                observedProcessID = application.processIdentifier
+                observedProcessDate = now
+            }
+            return observedProcessDate ?? now
+        }
+        return now.timeIntervalSince(application.launchDate ?? firstObserved)
     }
 
     /// A denied app looks the same as an idle one without this check:

@@ -37,3 +37,15 @@ struct SpotifyAccessTests {
         #expect(SpotifyAccess(status: -12_345) == .failed(-12_345))
     }
 }
+
+struct SpotifyReadinessTests {
+
+    @Test("Spotify is ready after launch completes and three seconds pass")
+    func readyTable() {
+        #expect(!SpotifyBridge.isReady(isFinishedLaunching: false, processAge: 2.9))
+        #expect(!SpotifyBridge.isReady(isFinishedLaunching: true, processAge: 2.9))
+        #expect(SpotifyBridge.isReady(isFinishedLaunching: true, processAge: 3))
+        #expect(!SpotifyBridge.isReady(isFinishedLaunching: false, processAge: 29.9))
+        #expect(SpotifyBridge.isReady(isFinishedLaunching: false, processAge: 30))
+    }
+}

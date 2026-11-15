@@ -212,6 +212,26 @@ struct SpotifyWatcherPollingTests {
 
 struct SpotifyWatcherPermissionTests {
 
+    @Test("Permission waits until Spotify is ready")
+    func waitsForSpotifyStartup() async throws {
+        let fake = FakeSpotify()
+        fake.isSpotifyReady = false
+        fake.track = .song()
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0 == .waiting(.unavailable) })
+        try await Task.sleep(for: .milliseconds(1_200))
+        #expect(fake.accessChecks == 0)
+        #expect(fake.trackIDReads == 0)
+
+        fake.isSpotifyReady = true
+        #expect(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
+        #expect(fake.accessChecks > 0)
+    }
+
     @Test("Settled access does not request consent", arguments: [
         SpotifyAccess.ok, .denied, .unavailable
     ])

@@ -218,7 +218,8 @@ final class AppState {
         switch playback.access {
         case .denied: return "No permission to control Spotify"
         case .undetermined: return "Waiting for permission"
-        case .unavailable, .noAnswer, .failed: return "Spotify not reachable"
+        case .unavailable: return "Spotify is starting"
+        case .noAnswer, .failed: return "Spotify not reachable"
         case .ok: break
         }
         if volumeHeldDown { return "Muting ad" }

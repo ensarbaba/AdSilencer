@@ -130,6 +130,10 @@ final class SpotifyWatcher: Sendable {
             onPlayback(.idle)
             return
         }
+        guard spotify.isSpotifyReady else {
+            onPlayback(.waiting(.unavailable))
+            return
+        }
         let permission = checkPermission()
         // stop() can run while this read waits for the check.
         guard state.withLock({ $0.isPollingSpotify }) else { return }

@@ -15,7 +15,9 @@ final class FakeSpotify: SpotifyControlling {
 
     private struct State {
         var isSpotifyRunning = true
+        var isSpotifyReady = true
         var access: SpotifyAccess = .ok
+        var accessChecks = 0
         var accessRequests = 0
         var playerStateReads = 0
         var trackIDReads = 0
@@ -39,15 +41,24 @@ final class FakeSpotify: SpotifyControlling {
         set { state.withLock { $0.isSpotifyRunning = newValue } }
     }
 
+    var isSpotifyReady: Bool {
+        get { state.withLock { $0.isSpotifyReady } }
+        set { state.withLock { $0.isSpotifyReady = newValue } }
+    }
+
     var access: SpotifyAccess {
         get {
-            let hook = state.withLock { $0.onAccessCheck }
+            let hook = state.withLock {
+                $0.accessChecks += 1
+                return $0.onAccessCheck
+            }
             hook?()
             return state.withLock { $0.access }
         }
         set { state.withLock { $0.access = newValue } }
     }
 
+    var accessChecks: Int { state.withLock { $0.accessChecks } }
     var accessRequests: Int { state.withLock { $0.accessRequests } }
     var playerStateReads: Int { state.withLock { $0.playerStateReads } }
     var trackIDReads: Int { state.withLock { $0.trackIDReads } }
