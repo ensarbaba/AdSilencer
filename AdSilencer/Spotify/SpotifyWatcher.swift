@@ -161,7 +161,7 @@ final class SpotifyWatcher: Sendable {
         }
         return state.withLock { s in
             if s.isAskingForPermission { return .undetermined }
-            if s.isCheckingPermission && s.permission == .undetermined { return .unavailable }
+            if s.isCheckingPermission { return .noAnswer }
             return s.permission
         }
     }

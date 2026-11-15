@@ -48,7 +48,9 @@ struct OnboardingView: View {
                 switch state.playback.access {
                 case .denied:
                     Button("Open Automation Settings", action: state.openAutomationSettings)
-                case .unavailable where state.playback.isSpotifyRunning:
+                case .unavailable where state.playback.isSpotifyRunning,
+                     .noAnswer where state.playback.isSpotifyRunning,
+                     .failed where state.playback.isSpotifyRunning:
                     Text("macOS does not answer. Click Restart Apple Events and type your password. If this message stays, restart your Mac.")
                         .foregroundStyle(.secondary)
                     Button("Restart Apple Events", action: state.restartAppleEvents)

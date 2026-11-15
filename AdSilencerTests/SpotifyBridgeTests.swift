@@ -3,6 +3,7 @@
 //  AdSilencerTests
 //
 
+import CoreServices
 import Testing
 @testable import AdSilencer
 
@@ -21,5 +22,18 @@ struct SpotifyPlayerStateTests {
         // would return for a state this app does not know.
         #expect(SpotifyPlayerState(code: 0) == .stopped)
         #expect(SpotifyPlayerState(code: 999) == .stopped)
+    }
+}
+
+struct SpotifyAccessTests {
+
+    @Test("Apple event statuses map to access states")
+    func statusTable() {
+        #expect(SpotifyAccess(status: noErr) == .ok)
+        #expect(
+            SpotifyAccess(status: OSStatus(errAEEventWouldRequireUserConsent)) == .undetermined
+        )
+        #expect(SpotifyAccess(status: OSStatus(errAEEventNotPermitted)) == .denied)
+        #expect(SpotifyAccess(status: -12_345) == .failed(-12_345))
     }
 }

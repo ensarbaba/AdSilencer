@@ -32,8 +32,21 @@ enum SpotifyAccess: Equatable {
     case undetermined
     /// The user denied it in System Settings > Privacy & Security > Automation.
     case denied
-    /// Spotify is not installed or not running.
+    /// Spotify is closed or is still starting.
     case unavailable
+    /// macOS did not answer the permission check.
+    case noAnswer
+    /// macOS returned an access status that the app does not know.
+    case failed(OSStatus)
+
+    init(status: OSStatus) {
+        switch status {
+        case noErr: self = .ok
+        case OSStatus(errAEEventWouldRequireUserConsent): self = .undetermined
+        case OSStatus(errAEEventNotPermitted): self = .denied
+        default: self = .failed(status)
+        }
+    }
 }
 
 protocol SpotifyControlling: AnyObject, Sendable {
@@ -82,18 +95,17 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
         // Names Spotify by its bundle id, the way Apple events address an app.
         var target = AEAddressDesc()
         let bundleBytes = Array(Self.bundleID.utf8)
-        guard AECreateDesc(typeApplicationBundleID, bundleBytes, bundleBytes.count, &target) == noErr
-        else { return .unavailable }
+        let descriptorStatus = AECreateDesc(
+            typeApplicationBundleID, bundleBytes, bundleBytes.count, &target
+        )
+        guard descriptorStatus == noErr
+        else { return SpotifyAccess(status: OSStatus(descriptorStatus)) }
         defer { AEDisposeDesc(&target) }
 
-        switch AEDeterminePermissionToAutomateTarget(
+        let status = AEDeterminePermissionToAutomateTarget(
             &target, typeWildCard, typeWildCard, askUserIfNeeded
-        ) {
-        case noErr: return .ok
-        case OSStatus(errAEEventWouldRequireUserConsent): return .undetermined
-        case OSStatus(errAEEventNotPermitted): return .denied
-        default: return .unavailable
-        }
+        )
+        return SpotifyAccess(status: status)
     }
 
     /// Fills or clears `spotifyConnection`. The caller holds `spotifyConnectionLock`.

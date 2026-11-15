@@ -366,7 +366,7 @@ struct SpotifyWatcherPermissionTests {
         }
 
         watcher.start()
-        #expect(await recorder.waitFor { $0 == .waiting(.unavailable) })
+        #expect(await recorder.waitFor { $0 == .waiting(.noAnswer) })
         #expect(fake.trackIDReads == 0)
 
         fake.onAccessCheck = nil

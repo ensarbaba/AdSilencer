@@ -203,7 +203,7 @@ final class AppState {
         switch access {
         case .ok: isMissing = false
         case .denied, .undetermined: isMissing = true
-        case .unavailable: return
+        case .unavailable, .noAnswer, .failed: return
         }
         if isMissing == needsSetup { return }
         needsSetup = isMissing
@@ -218,7 +218,7 @@ final class AppState {
         switch playback.access {
         case .denied: return "No permission to control Spotify"
         case .undetermined: return "Waiting for permission"
-        case .unavailable: return "Spotify not reachable"
+        case .unavailable, .noAnswer, .failed: return "Spotify not reachable"
         case .ok: break
         }
         if volumeHeldDown { return "Muting ad" }
