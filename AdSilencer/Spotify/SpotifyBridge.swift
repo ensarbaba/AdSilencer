@@ -52,6 +52,7 @@ enum SpotifyAccess: Equatable {
 protocol SpotifyControlling: AnyObject, Sendable {
     var isSpotifyRunning: Bool { get }
     var isSpotifyReady: Bool { get }
+    var spotifyProcessAge: TimeInterval? { get }
     var access: SpotifyAccess { get }
     var playerState: SpotifyPlayerState { get }
     /// A negative reading means Spotify could not report its volume.
@@ -87,6 +88,10 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
             isFinishedLaunching: application.isFinishedLaunching,
             processAge: processAge(for: application)
         )
+    }
+
+    var spotifyProcessAge: TimeInterval? {
+        spotifyApplication.map { processAge(for: $0) }
     }
 
     static func isReady(isFinishedLaunching: Bool, processAge: TimeInterval) -> Bool {

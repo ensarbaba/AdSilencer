@@ -82,9 +82,12 @@ final class AppState {
             let volumeIsDown = muter.apply(adPlaying: playback.isAdPlaying)
 
             Task { @MainActor in
-                self?.playback = playback
-                self?.volumeHeldDown = (self?.isOn == true) && volumeIsDown
-                self?.updateSetupState(for: playback.access)
+                guard let self else { return }
+                let previous = self.playback
+                self.playback = playback
+                self.volumeHeldDown = self.isOn && volumeIsDown
+                self.updateSetupState(for: playback.access)
+                self.logSpotifyChange(from: previous, to: playback)
             }
         }
 
@@ -173,6 +176,18 @@ final class AppState {
     private func refreshSystemStatus() {
         loginStatus = SMAppService.mainApp.status
         isSpotifyInstalled = Self.spotifyAppURL != nil
+    }
+
+    private func logSpotifyChange(from previous: Playback, to current: Playback) {
+        guard previous.isSpotifyRunning != current.isSpotifyRunning
+                || previous.access != current.access
+        else { return }
+
+        let access = String(describing: current.access)
+        let age = spotify.spotifyProcessAge.map { String(format: "%.1f", $0) } ?? "unknown"
+        Log.spotify.info(
+            "running=\(current.isSpotifyRunning, privacy: .public) access=\(access, privacy: .public) processAge=\(age, privacy: .public)s"
+        )
     }
 
     /// Asks GitHub at launch and then once a day. After a failed check it asks

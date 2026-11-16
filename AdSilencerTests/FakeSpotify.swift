@@ -16,6 +16,7 @@ final class FakeSpotify: SpotifyControlling {
     private struct State {
         var isSpotifyRunning = true
         var isSpotifyReady = true
+        var spotifyProcessAge: TimeInterval? = 60
         var access: SpotifyAccess = .ok
         var accessChecks = 0
         var accessRequests = 0
@@ -44,6 +45,11 @@ final class FakeSpotify: SpotifyControlling {
     var isSpotifyReady: Bool {
         get { state.withLock { $0.isSpotifyReady } }
         set { state.withLock { $0.isSpotifyReady = newValue } }
+    }
+
+    var spotifyProcessAge: TimeInterval? {
+        get { state.withLock { $0.spotifyProcessAge } }
+        set { state.withLock { $0.spotifyProcessAge = newValue } }
     }
 
     var access: SpotifyAccess {
