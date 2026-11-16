@@ -376,7 +376,10 @@ struct SpotifyWatcherPermissionTests {
         let fake = FakeSpotify()
         fake.track = .song()
         let release = DispatchSemaphore(value: 0)
-        fake.onAccessCheck = { release.wait() }
+        fake.onAccessCheck = {
+            release.wait()
+            return nil
+        }
         let recorder = Recorder()
         let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
         defer {
@@ -392,6 +395,40 @@ struct SpotifyWatcherPermissionTests {
         fake.onAccessCheck = nil
         release.signal()
         #expect(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
+    }
+
+    @Test("An answer from a closed Spotify does not change the new process")
+    func stalePermissionAnswerIsIgnored() async throws {
+        let fake = FakeSpotify()
+        fake.track = .song()
+        let release = DispatchSemaphore(value: 0)
+        fake.onAccessCheck = {
+            release.wait()
+            return .denied
+        }
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer {
+            watcher.stop()
+            release.signal()
+        }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0 == .waiting(.noAnswer) })
+
+        fake.isSpotifyRunning = false
+        watcher.refresh()
+        try #require(await recorder.waitFor { $0 == .idle })
+
+        fake.onAccessCheck = nil
+        fake.isSpotifyRunning = true
+        watcher.refresh()
+        try #require(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
+
+        release.signal()
+        try await Task.sleep(for: .milliseconds(250))
+        #expect(recorder.all.contains { $0.access == .denied } == false)
+        #expect(recorder.all.last?.access == .ok)
     }
 
     @Test("Without the onboarding window, an undetermined permission is never asked for")

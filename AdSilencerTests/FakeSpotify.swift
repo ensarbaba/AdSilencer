@@ -21,7 +21,7 @@ final class FakeSpotify: SpotifyControlling {
         var accessRequests = 0
         var playerStateReads = 0
         var trackIDReads = 0
-        var onAccessCheck: (@Sendable () -> Void)?
+        var onAccessCheck: (@Sendable () -> SpotifyAccess?)?
         var onAccessRequest: (@Sendable () -> SpotifyAccess)?
         var playerState: SpotifyPlayerState = .playing
         var track: String?
@@ -52,7 +52,7 @@ final class FakeSpotify: SpotifyControlling {
                 $0.accessChecks += 1
                 return $0.onAccessCheck
             }
-            hook?()
+            if let answer = hook?() { return answer }
             return state.withLock { $0.access }
         }
         set { state.withLock { $0.access = newValue } }
@@ -63,7 +63,7 @@ final class FakeSpotify: SpotifyControlling {
     var playerStateReads: Int { state.withLock { $0.playerStateReads } }
     var trackIDReads: Int { state.withLock { $0.trackIDReads } }
 
-    var onAccessCheck: (@Sendable () -> Void)? {
+    var onAccessCheck: (@Sendable () -> SpotifyAccess?)? {
         get { state.withLock { $0.onAccessCheck } }
         set { state.withLock { $0.onAccessCheck = newValue } }
     }

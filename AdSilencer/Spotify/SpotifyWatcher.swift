@@ -31,6 +31,7 @@ final class SpotifyWatcher: Sendable {
         var isCheckingPermission = false
         var isAskingForPermission = false
         var isPermissionDialogAllowed = false
+        var checkGeneration = 0
         var playerState: SpotifyPlayerState = .stopped
         var trackID: String?
     }
@@ -121,16 +122,12 @@ final class SpotifyWatcher: Sendable {
     private func readPlayerStatus() {
         guard state.withLock({ $0.isPollingSpotify }) else { return }
         guard spotify.isSpotifyRunning else {
-            // A check that hangs on a quit Spotify never returns. Allow a new one.
-            state.withLock {
-                $0.permission = .undetermined
-                $0.isCheckingPermission = false
-                $0.isAskingForPermission = false
-            }
+            resetPermissionState()
             onPlayback(.idle)
             return
         }
         guard spotify.isSpotifyReady else {
+            resetPermissionState()
             onPlayback(.waiting(.unavailable))
             return
         }
@@ -150,15 +147,15 @@ final class SpotifyWatcher: Sendable {
     /// check runs on `permissionQueue`, one at a time, and this read waits for
     /// it at most `permissionTimeout`. The consent dialog has no time limit.
     private func checkPermission() -> SpotifyAccess {
-        let startsCheck = state.withLock { s -> Bool in
-            if s.isCheckingPermission { return false }
+        let generation = state.withLock { s -> Int? in
+            if s.isCheckingPermission { return nil }
             s.isCheckingPermission = true
-            return true
+            return s.checkGeneration
         }
-        if startsCheck {
+        if let generation {
             let answered = DispatchSemaphore(value: 0)
             permissionQueue.async { [weak self] in
-                self?.runPermissionCheck()
+                self?.runPermissionCheck(generation: generation)
                 answered.signal()
             }
             _ = answered.wait(timeout: .now() + Self.permissionTimeout)
@@ -170,15 +167,31 @@ final class SpotifyWatcher: Sendable {
         }
     }
 
-    private func runPermissionCheck() {
+    private func runPermissionCheck(generation: Int) {
         var access = spotify.access
-        let mayAsk = state.withLock { $0.isPermissionDialogAllowed }
+        let mayAsk = state.withLock {
+            generation == $0.checkGeneration && $0.isPermissionDialogAllowed
+        }
         if access == .undetermined && mayAsk {
-            state.withLock { $0.isAskingForPermission = true }
-            access = spotify.requestAccess()
+            let isCurrent = state.withLock { s -> Bool in
+                guard generation == s.checkGeneration else { return false }
+                s.isAskingForPermission = true
+                return true
+            }
+            if isCurrent { access = spotify.requestAccess() }
         }
         state.withLock {
+            guard generation == $0.checkGeneration else { return }
             $0.permission = access
+            $0.isCheckingPermission = false
+            $0.isAskingForPermission = false
+        }
+    }
+
+    private func resetPermissionState() {
+        state.withLock {
+            $0.checkGeneration &+= 1
+            $0.permission = .undetermined
             $0.isCheckingPermission = false
             $0.isAskingForPermission = false
         }
