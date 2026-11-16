@@ -12,9 +12,16 @@ import Testing
 struct AppStateTests {
 
     /// A defaults store of its own, so tests do not touch real settings.
-    private func makeState(_ fake: FakeSpotify) -> AppState {
+    private func makeState(
+        _ fake: FakeSpotify,
+        unreachableDelay: TimeInterval = 10
+    ) -> AppState {
         let suite = UserDefaults(suiteName: "adsilencer.tests.\(UUID().uuidString)")!
-        return AppState(spotify: fake, defaults: suite)
+        return AppState(
+            spotify: fake,
+            defaults: suite,
+            unreachableDelay: unreachableDelay
+        )
     }
 
     private func waitFor(
@@ -134,6 +141,51 @@ struct AppStateTests {
         state.start()
 
         #expect(await waitFor { state.statusLine == "Waiting for permission" })
+    }
+
+    @Test("A missing macOS answer opens setup once and clears after recovery")
+    func noAnswerOpensSetup() async throws {
+        let fake = FakeSpotify()
+        let release = DispatchSemaphore(value: 0)
+        fake.onAccessCheck = {
+            release.wait()
+            return nil
+        }
+        let state = makeState(fake, unreachableDelay: 0.05)
+        defer {
+            state.shutdown()
+            fake.onAccessCheck = nil
+            release.signal()
+        }
+
+        state.start()
+        try #require(await waitFor(4) {
+            state.isSpotifyUnreachable && state.isOnboardingRequested
+        })
+
+        state.isOnboardingRequested = false
+        try await Task.sleep(for: .milliseconds(1_200))
+        #expect(!state.isOnboardingRequested)
+
+        fake.onAccessCheck = nil
+        release.signal()
+        #expect(await waitFor(3) {
+            state.playback.access == .ok && !state.isSpotifyUnreachable
+        })
+    }
+
+    @Test("A Spotify process that still starts is not unreachable")
+    func startupIsNotUnreachable() async throws {
+        let fake = FakeSpotify()
+        fake.isSpotifyReady = false
+        let state = makeState(fake, unreachableDelay: 0)
+        defer { state.shutdown() }
+
+        state.start()
+        try #require(await waitFor { state.statusLine == "Spotify is starting" })
+        try await Task.sleep(for: .milliseconds(1_200))
+        #expect(!state.isSpotifyUnreachable)
+        #expect(!state.isOnboardingRequested)
     }
 
     @Test("The status line says Spotify is playing")

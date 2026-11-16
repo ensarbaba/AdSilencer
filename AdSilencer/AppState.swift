@@ -33,6 +33,7 @@ final class AppState {
 
     private(set) var playback: Playback = .idle
     private var volumeHeldDown = false
+    private(set) var isSpotifyUnreachable = false
 
     /// Stored here rather than read while the menu draws. MenuBarExtra caches
     /// the menu, so a value read during drawing is never read again and the
@@ -57,14 +58,21 @@ final class AppState {
     private let spotify: SpotifyControlling
     private let defaults: UserDefaults
     private let muter: AdMuter
+    private let unreachableDelay: TimeInterval
     @ObservationIgnored private var watcher: SpotifyWatcher?
     @ObservationIgnored private var isOnboardingVisible = false
+    @ObservationIgnored private var unreachableStartedAt: Date?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     @ObservationIgnored private var updateCheck: Task<Void, Error>?
 
-    init(spotify: SpotifyControlling = SpotifyBridge(), defaults: UserDefaults = .standard) {
+    init(
+        spotify: SpotifyControlling = SpotifyBridge(),
+        defaults: UserDefaults = .standard,
+        unreachableDelay: TimeInterval = 10
+    ) {
         self.spotify = spotify
         self.defaults = defaults
+        self.unreachableDelay = unreachableDelay
         defaults.register(defaults: [Keys.on: true, Keys.needsSetup: true])
 
         let on = defaults.bool(forKey: Keys.on)
@@ -88,6 +96,7 @@ final class AppState {
                 self.playback = playback
                 self.volumeHeldDown = self.isOn && volumeIsDown
                 self.updateSetupState(for: playback.access)
+                self.updateUnreachableState(for: playback)
                 self.logSpotifyChange(from: previous, to: playback)
             }
         }
@@ -194,6 +203,30 @@ final class AppState {
         Log.spotify.info(
             "running=\(current.isSpotifyRunning, privacy: .public) access=\(access, privacy: .public) processAge=\(age, privacy: .public)s"
         )
+    }
+
+    private func updateUnreachableState(for playback: Playback) {
+        let hasNoAnswer: Bool
+        switch playback.access {
+        case .noAnswer, .failed: hasNoAnswer = playback.isSpotifyRunning
+        case .ok, .undetermined, .denied, .unavailable: hasNoAnswer = false
+        }
+
+        guard hasNoAnswer else {
+            unreachableStartedAt = nil
+            isSpotifyUnreachable = false
+            return
+        }
+
+        let now = Date()
+        if unreachableStartedAt == nil { unreachableStartedAt = now }
+        guard let unreachableStartedAt,
+              now.timeIntervalSince(unreachableStartedAt) >= unreachableDelay,
+              !isSpotifyUnreachable
+        else { return }
+
+        isSpotifyUnreachable = true
+        isOnboardingRequested = true
     }
 
     /// Asks GitHub at launch and then once a day. After a failed check it asks

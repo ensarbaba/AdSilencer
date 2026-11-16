@@ -45,18 +45,7 @@ struct OnboardingView: View {
             SetupStep(isDone: state.playback.access == .ok,
                       doneTitle: "AdSilencer can control Spotify",
                       todoTitle: "Allow AdSilencer to control Spotify") {
-                switch state.playback.access {
-                case .denied:
-                    Button("Open Automation Settings", action: state.openAutomationSettings)
-                case .unavailable where state.playback.isSpotifyRunning,
-                     .noAnswer where state.playback.isSpotifyRunning,
-                     .failed where state.playback.isSpotifyRunning:
-                    Text("macOS does not answer. Click Restart Apple Events and type your password. If this message stays, restart your Mac.")
-                        .foregroundStyle(.secondary)
-                    Button("Restart Apple Events", action: state.restartAppleEvents)
-                default:
-                    Text("Click OK when macOS asks.").foregroundStyle(.secondary)
-                }
+                permissionHelp
             }
 
             Divider()
@@ -77,5 +66,41 @@ struct OnboardingView: View {
 
     private func close() {
         dismissWindow(id: Self.windowID)
+    }
+
+    @ViewBuilder
+    private var permissionHelp: some View {
+        if state.playback.isSpotifyRunning {
+            switch state.playback.access {
+            case .denied:
+                Button("Open Automation Settings", action: state.openAutomationSettings)
+            case .undetermined:
+                Text("Click OK when macOS asks.").foregroundStyle(.secondary)
+            case .unavailable:
+                Text("Waiting for Spotify.").foregroundStyle(.secondary)
+            case .noAnswer:
+                if state.isSpotifyUnreachable {
+                    unreachableHelp("macOS does not answer.")
+                } else {
+                    Text("Waiting for macOS.").foregroundStyle(.secondary)
+                }
+            case .failed(let status):
+                if state.isSpotifyUnreachable {
+                    unreachableHelp("macOS reports error \(status).")
+                } else {
+                    Text("Waiting for macOS.").foregroundStyle(.secondary)
+                }
+            case .ok:
+                EmptyView()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func unreachableHelp(_ problem: String) -> some View {
+        Text(problem).foregroundStyle(.secondary)
+        Text("Restart Apple Events and type your password. If the problem stays, restart your Mac.")
+            .foregroundStyle(.secondary)
+        Button("Restart Apple Events", action: state.restartAppleEvents)
     }
 }
