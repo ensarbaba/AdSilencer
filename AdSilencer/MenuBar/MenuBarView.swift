@@ -17,10 +17,14 @@ struct MenuBarView: View {
     var body: some View {
         Text(state.statusLine)
 
-        if state.playback.access == .denied || state.playback.access == .undetermined {
+        if state.playback.access == .denied {
             Button("Open Automation settings...") {
                 state.openAutomationSettings()
             }
+        }
+
+        Button("Troubleshooting...") {
+            state.requestTroubleshooting()
         }
 
         Divider()
@@ -73,7 +77,7 @@ struct MenuBarLabel: View {
 
     var body: some View {
         Image(state.menuBarImage)
-            .onChange(of: state.isOnboardingRequested) { _, isRequested in
+            .onChange(of: state.isOnboardingRequested, initial: true) { _, isRequested in
                 if isRequested { showOnboarding() }
             }
     }

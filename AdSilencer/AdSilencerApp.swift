@@ -21,7 +21,7 @@ struct AdSilencerApp: App {
         }
         .menuBarExtraStyle(.menu)
 
-        Window("Welcome to AdSilencer", id: OnboardingView.windowID) {
+        Window("AdSilencer Setup", id: OnboardingView.windowID) {
             OnboardingView(state: delegate.state)
         }
         .windowResizability(.contentSize)

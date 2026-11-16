@@ -49,6 +49,7 @@ final class AppState {
     /// Set when the app is opened again while it runs. MenuBarLabel opens the
     /// onboarding window, because only a view can call `openWindow`.
     var isOnboardingRequested = false
+    var isTroubleshootingRequested = false
 
     /// A newer release on GitHub. The menu shows it.
     private(set) var update: GitHubRelease?
@@ -148,6 +149,11 @@ final class AppState {
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
         )
         if let url { NSWorkspace.shared.open(url) }
+    }
+
+    func requestTroubleshooting() {
+        isTroubleshootingRequested = true
+        isOnboardingRequested = true
     }
 
     /// Restarts appleeventsd, the macOS service that answers the permission
