@@ -24,6 +24,11 @@ enum SpotifyPlayerState: Equatable {
     }
 }
 
+enum SpotifyReadError: Error {
+    case unavailable
+    case noAnswer
+}
+
 /// Whether this app may send Apple events to Spotify.
 enum SpotifyAccess: Equatable {
     /// Permitted, or already granted.
@@ -54,12 +59,12 @@ protocol SpotifyControlling: AnyObject, Sendable {
     var isSpotifyReady: Bool { get }
     var spotifyProcessAge: TimeInterval? { get }
     var access: SpotifyAccess { get }
-    var playerState: SpotifyPlayerState { get }
     /// A negative reading means Spotify could not report its volume.
     var soundVolume: Int { get set }
 
     func requestAccess() -> SpotifyAccess
-    func currentTrackID() -> String?
+    func readPlayerState() throws -> SpotifyPlayerState
+    func currentTrackID() throws -> String?
 }
 
 /// Serializes one ScriptingBridge connection across callers.
@@ -163,11 +168,16 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
         }
     }
 
-    var playerState: SpotifyPlayerState {
-        spotifyConnectionLock.withLock {
+    func readPlayerState() throws -> SpotifyPlayerState {
+        try spotifyConnectionLock.withLock {
             updateSpotifyConnection()
-            guard let spotifyConnection else { return .stopped }
-            return SpotifyPlayerState(code: (spotifyConnection as SpotifyScriptingApplication).playerState ?? 0)
+            guard let spotifyConnection else { throw SpotifyReadError.unavailable }
+            let errors = SpotifyEventErrors()
+            spotifyConnection.delegate = errors
+            defer { spotifyConnection.delegate = nil }
+            let code = (spotifyConnection as SpotifyScriptingApplication).playerState ?? 0
+            guard !errors.failed else { throw SpotifyReadError.noAnswer }
+            return SpotifyPlayerState(code: code)
         }
     }
 
@@ -192,13 +202,18 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
         }
     }
 
-    func currentTrackID() -> String? {
-        spotifyConnectionLock.withLock {
+    func currentTrackID() throws -> String? {
+        try spotifyConnectionLock.withLock {
             updateSpotifyConnection()
-            guard let spotifyConnection else { return nil }
+            guard let spotifyConnection else { throw SpotifyReadError.unavailable }
+            let errors = SpotifyEventErrors()
+            spotifyConnection.delegate = errors
+            defer { spotifyConnection.delegate = nil }
             // Spotify returns a live object even when nothing is loaded. A missing
             // or empty id is how that appears.
-            guard let id = (spotifyConnection as SpotifyScriptingApplication).currentTrack?.id, id.isNotEmpty
+            let id = (spotifyConnection as SpotifyScriptingApplication).currentTrack?.id
+            guard !errors.failed else { throw SpotifyReadError.noAnswer }
+            guard let id, id.isNotEmpty
             else { return nil }
             return id
         }

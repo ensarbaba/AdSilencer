@@ -21,7 +21,9 @@ final class FakeSpotify: SpotifyControlling {
         var accessChecks = 0
         var accessRequests = 0
         var playerStateReads = 0
+        var playerStateReadFailures = 0
         var trackIDReads = 0
+        var trackIDReadFailures = 0
         var onAccessCheck: (@Sendable () -> SpotifyAccess?)?
         var onAccessRequest: (@Sendable () -> SpotifyAccess)?
         var playerState: SpotifyPlayerState = .playing
@@ -90,13 +92,24 @@ final class FakeSpotify: SpotifyControlling {
     }
 
     var playerState: SpotifyPlayerState {
-        get {
-            state.withLock {
-                $0.playerStateReads += 1
-                return $0.playerState
-            }
-        }
+        get { state.withLock { $0.playerState } }
         set { state.withLock { $0.playerState = newValue } }
+    }
+
+    func readPlayerState() throws -> SpotifyPlayerState {
+        try state.withLock {
+            $0.playerStateReads += 1
+            if $0.playerStateReadFailures > 0 {
+                $0.playerStateReadFailures -= 1
+                throw SpotifyReadError.noAnswer
+            }
+            return $0.playerState
+        }
+    }
+
+    var playerStateReadFailures: Int {
+        get { state.withLock { $0.playerStateReadFailures } }
+        set { state.withLock { $0.playerStateReadFailures = newValue } }
     }
 
     var track: String? {
@@ -160,10 +173,19 @@ final class FakeSpotify: SpotifyControlling {
         set { state.withLock { $0.beforeTrackIDRead = newValue } }
     }
 
-    func currentTrackID() -> String? {
+    var trackIDReadFailures: Int {
+        get { state.withLock { $0.trackIDReadFailures } }
+        set { state.withLock { $0.trackIDReadFailures = newValue } }
+    }
+
+    func currentTrackID() throws -> String? {
         beforeTrackIDRead?()
-        return state.withLock {
+        return try state.withLock {
             $0.trackIDReads += 1
+            if $0.trackIDReadFailures > 0 {
+                $0.trackIDReadFailures -= 1
+                throw SpotifyReadError.noAnswer
+            }
             return $0.track
         }
     }

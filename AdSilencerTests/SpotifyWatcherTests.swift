@@ -27,6 +27,14 @@ private final class Recorder: Sendable {
         await poll(timeout) { self.all.contains(where: match) }
     }
 
+    func waitFor(
+        after index: Int,
+        timeout: TimeInterval = 3,
+        _ match: @escaping @Sendable (Playback) -> Bool
+    ) async -> Bool {
+        await poll(timeout) { self.all.dropFirst(index).contains(where: match) }
+    }
+
     private func poll(_ timeout: TimeInterval, _ done: @Sendable () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -207,6 +215,44 @@ struct SpotifyWatcherPollingTests {
 
         fake.track = .ad()
         #expect(await recorder.waitFor(0.5) { $0.isAdPlaying })
+    }
+
+    @Test("One failed track read keeps an active ad without a report")
+    func oneFailedReadKeepsAd() async throws {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        let recorder = Recorder()
+        let watcher = makeWatcher(fake, recorder)
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.isAdPlaying })
+        let reportCount = recorder.count
+        let readCount = fake.trackIDReads
+
+        fake.trackIDReadFailures = 1
+        try await Task.sleep(for: .milliseconds(350))
+
+        #expect(fake.trackIDReads >= readCount + 2)
+        #expect(recorder.count == reportCount)
+    }
+
+    @Test("Two failed track reads end an active ad")
+    func twoFailedReadsEndAd() async throws {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        let recorder = Recorder()
+        let watcher = makeWatcher(fake, recorder)
+        defer { watcher.stop() }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.isAdPlaying })
+        let reportCount = recorder.count
+
+        fake.trackIDReadFailures = 2
+        #expect(await recorder.waitFor(after: reportCount, timeout: 0.5) {
+            $0.trackID == nil && !$0.isAdPlaying
+        })
     }
 }
 

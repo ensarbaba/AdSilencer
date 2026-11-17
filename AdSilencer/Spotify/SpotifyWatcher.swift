@@ -33,7 +33,9 @@ final class SpotifyWatcher: Sendable {
         var isPermissionDialogAllowed = false
         var checkGeneration = 0
         var playerState: SpotifyPlayerState = .stopped
+        var playerStateReadFailures = 0
         var trackID: String?
+        var trackIDReadFailures = 0
     }
 
     /// Playback reads happen here, so a slow reply cannot block the UI.
@@ -194,17 +196,41 @@ final class SpotifyWatcher: Sendable {
             $0.permission = .undetermined
             $0.isCheckingPermission = false
             $0.isAskingForPermission = false
+            $0.playerState = .stopped
+            $0.playerStateReadFailures = 0
+            $0.trackID = nil
+            $0.trackIDReadFailures = 0
         }
     }
 
     private func refreshTrackID() {
-        let id = spotify.currentTrackID()
-        state.withLock { $0.trackID = id }
+        do {
+            let id = try spotify.currentTrackID()
+            state.withLock {
+                $0.trackID = id
+                $0.trackIDReadFailures = 0
+            }
+        } catch {
+            state.withLock {
+                $0.trackIDReadFailures += 1
+                if $0.trackIDReadFailures >= 2 { $0.trackID = nil }
+            }
+        }
     }
 
     private func refreshPlayerState() {
-        let playerState = spotify.playerState
-        state.withLock { $0.playerState = playerState }
+        do {
+            let playerState = try spotify.readPlayerState()
+            state.withLock {
+                $0.playerState = playerState
+                $0.playerStateReadFailures = 0
+            }
+        } catch {
+            state.withLock {
+                $0.playerStateReadFailures += 1
+                if $0.playerStateReadFailures >= 2 { $0.playerState = .stopped }
+            }
+        }
     }
 
     /// The stored player state can be a second old. A new ad, or an ad
