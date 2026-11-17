@@ -40,10 +40,16 @@ final class AdMuter: Sendable {
     }
 
     private let spotify: SpotifyControlling
-    private let state = Mutex(State())
+    private let savedVolumeStore: (any SavedVolumeStore)?
+    private let state: Mutex<State>
 
-    init(spotify: SpotifyControlling) {
+    init(
+        spotify: SpotifyControlling,
+        savedVolumeStore: (any SavedVolumeStore)? = nil
+    ) {
         self.spotify = spotify
+        self.savedVolumeStore = savedVolumeStore
+        self.state = Mutex(State(saved: savedVolumeStore?.load()))
     }
 
     var isOn: Bool {
@@ -78,7 +84,7 @@ final class AdMuter: Sendable {
         guard current >= 0 else { return }
         // Only remember a volume worth returning to. Restoring an
         // already silent value later would look like a bug.
-        if current > Self.muteLevel { s.saved = current }
+        if current > Self.muteLevel { setSaved(current, in: &s) }
         spotify.soundVolume = Self.muteLevel
         guard Self.isSilent(spotify.soundVolume) else { return }
         s.phase = .muting
@@ -89,7 +95,7 @@ final class AdMuter: Sendable {
         guard current >= 0 else { return }
         if current > Self.muteLevel {
             // The user moved the slider. Take their value and stop.
-            s.saved = current
+            setSaved(current, in: &s)
             s.phase = .leftAlone
         }
     }
@@ -110,7 +116,7 @@ final class AdMuter: Sendable {
             guard restored else { return }
         }
         s.phase = .idle
-        s.saved = nil
+        setSaved(nil, in: &s)
     }
 
     /// False means still silent, so the caller should keep the saved value and
@@ -136,5 +142,11 @@ final class AdMuter: Sendable {
         // Negative means Spotify could not answer, so the write is unconfirmed
         // and has to be tried again. Silent means it never landed.
         return back > Self.muteLevel
+    }
+
+    private func setSaved(_ volume: Int?, in state: inout State) {
+        guard state.saved != volume else { return }
+        state.saved = volume
+        savedVolumeStore?.save(volume)
     }
 }

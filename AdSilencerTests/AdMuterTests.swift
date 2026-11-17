@@ -4,8 +4,25 @@
 //
 
 import Foundation
+import Synchronization
 import Testing
 @testable import AdSilencer
+
+private final class MemorySavedVolumeStore: SavedVolumeStore {
+    private let value: Mutex<Int?>
+
+    init(_ volume: Int? = nil) {
+        self.value = Mutex(volume)
+    }
+
+    func load() -> Int? {
+        value.withLock { $0 }
+    }
+
+    func save(_ volume: Int?) {
+        value.withLock { $0 = volume }
+    }
+}
 
 struct AdMuterTests {
 
@@ -13,6 +30,31 @@ struct AdMuterTests {
         let fake = FakeSpotify()
         fake.userSetsVolume(volume)
         return (AdMuter(spotify: fake), fake)
+    }
+
+    @Test("A new muter restores a saved volume when Spotify is silent")
+    func restoresStoredVolume() {
+        let store = MemorySavedVolumeStore(70)
+        let fake = FakeSpotify()
+        fake.userSetsVolume(1)
+        let muter = AdMuter(spotify: fake, savedVolumeStore: store)
+
+        #expect(!muter.apply(adPlaying: false))
+        #expect(fake.soundVolume == 70)
+        #expect(store.load() == nil)
+    }
+
+    @Test("An audible Spotify clears a stored volume without changing it")
+    func audibleSpotifyClearsStoredVolume() {
+        let store = MemorySavedVolumeStore(70)
+        let fake = FakeSpotify()
+        fake.userSetsVolume(50)
+        let muter = AdMuter(spotify: fake, savedVolumeStore: store)
+
+        #expect(!muter.apply(adPlaying: false))
+        #expect(fake.soundVolume == 50)
+        #expect(fake.volumeWrites.isEmpty)
+        #expect(store.load() == nil)
     }
 
     @Test("Switching off preserves a failed restore for the next poll")

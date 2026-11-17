@@ -79,7 +79,10 @@ final class AppState {
         self.isOn = on
         self.needsSetup = defaults.bool(forKey: Keys.needsSetup)
 
-        self.muter = AdMuter(spotify: spotify)
+        self.muter = AdMuter(
+            spotify: spotify,
+            savedVolumeStore: UserDefaultsSavedVolumeStore(defaults: defaults)
+        )
         self.muter.isOn = on
     }
 
