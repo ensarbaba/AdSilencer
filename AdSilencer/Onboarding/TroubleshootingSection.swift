@@ -52,6 +52,11 @@ struct TroubleshootingSection: View {
                     result = state.restartAppleEvents().message
                 }
 
+                Button("Copy Report") {
+                    state.copyReport()
+                    result = "The report is on the clipboard."
+                }
+
                 if let result {
                     Text(result)
                         .foregroundStyle(.secondary)

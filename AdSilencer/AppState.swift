@@ -165,6 +165,19 @@ final class AppState {
         isOnboardingRequested = true
     }
 
+    func copyReport() {
+        let report = DiagnosticReport.make(
+            appVersion: Self.appVersion,
+            macOSVersion: Self.macOSVersion,
+            spotifyVersion: Self.spotifyVersion,
+            playback: playback,
+            noAnswerDuration: unreachableStartedAt.map { Date().timeIntervalSince($0) },
+            isMuteEnabled: isOn
+        )
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(report, forType: .string)
+    }
+
     /// Restarts appleeventsd, the macOS service that answers the permission
     /// check. On some Macs it stops answering, and only a restart helps. macOS
     /// asks for an administrator password. After the restart, the waiting check
@@ -191,6 +204,30 @@ final class AppState {
 
     private static var spotifyAppURL: URL? {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: SpotifyBridge.bundleID)
+    }
+
+    private static var appVersion: String {
+        guard let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String, version.isNotEmpty
+        else { return "local build" }
+
+        guard let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+              build.isNotEmpty
+        else { return version }
+        return "\(version) (\(build))"
+    }
+
+    private static var macOSVersion: String {
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        return "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+    }
+
+    private static var spotifyVersion: String? {
+        guard let url = spotifyAppURL,
+              let bundle = Bundle(url: url)
+        else { return nil }
+        return bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     }
 
     private func refreshSystemStatus() {
