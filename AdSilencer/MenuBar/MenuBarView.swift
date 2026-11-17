@@ -82,9 +82,18 @@ struct MenuBarLabel: View {
             }
     }
 
+    /// macOS can refuse the activation, for example after a click in the menu
+    /// or when the window opens by itself. The window then comes in front of
+    /// the other apps anyway, without the keyboard focus.
     private func showOnboarding() {
         state.isOnboardingRequested = false
         openWindow(id: OnboardingView.windowID)
         NSApp.activate()
+        // openWindow creates the window in a later pass.
+        Task { @MainActor in
+            NSApp.windows
+                .first { $0.identifier?.rawValue == OnboardingView.windowID }?
+                .orderFrontRegardless()
+        }
     }
 }
