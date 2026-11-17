@@ -1,6 +1,9 @@
 schemaVersion: 1
 enabledWorkflows:
   - macos
+  - project-discovery
+  - utilities
+  - debugging
 sessionDefaults:
   scheme: AdSilencer
   projectPath: AdSilencer.xcodeproj

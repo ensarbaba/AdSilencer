@@ -74,3 +74,4 @@ Swift Testing, not XCTest.
 
 Tests drive `FakeSpotify` through the 100 ms track ID detector. Player state and
 permission refresh once a second.
+- If using XcodeBuildMCP, use the installed XcodeBuildMCP skill before calling XcodeBuildMCP tools.
