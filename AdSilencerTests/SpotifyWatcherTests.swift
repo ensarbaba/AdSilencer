@@ -443,6 +443,35 @@ struct SpotifyWatcherPermissionTests {
         #expect(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
     }
 
+    @Test("A slow check after access was granted keeps reporting the ad")
+    func slowCheckKeepsGrantedAccess() async throws {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        let release = DispatchSemaphore(value: 0)
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer {
+            watcher.stop()
+            fake.onAccessCheck = nil
+            release.signal()
+        }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0.access == .ok && $0.isAdPlaying })
+        let reportCount = recorder.count
+
+        fake.onAccessCheck = {
+            release.wait()
+            return nil
+        }
+        // Longer than two status reads, each with the 1 s permission timeout.
+        try await Task.sleep(for: .milliseconds(2_500))
+
+        let later = recorder.all.dropFirst(reportCount)
+        #expect(later.contains { $0.access == .noAnswer } == false)
+        #expect(recorder.all.last?.isAdPlaying == true)
+    }
+
     @Test("An answer from a closed Spotify does not change the new process")
     func stalePermissionAnswerIsIgnored() async throws {
         let fake = FakeSpotify()

@@ -164,7 +164,9 @@ final class SpotifyWatcher: Sendable {
         }
         return state.withLock { s in
             if s.isAskingForPermission { return .undetermined }
-            if s.isCheckingPermission { return .noAnswer }
+            // A check that waits keeps the last answer. Only a Spotify process
+            // without an answer yet reports no answer.
+            if s.isCheckingPermission && s.permission == .undetermined { return .noAnswer }
             return s.permission
         }
     }
