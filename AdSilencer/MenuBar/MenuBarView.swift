@@ -2,7 +2,7 @@
 //  MenuBarView.swift
 //  AdSilencer
 //
-//  The only interface. A menu bar icon and this menu. There is no window.
+//  The menu bar icon and its menu.
 //
 
 import AppKit

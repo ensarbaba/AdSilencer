@@ -21,9 +21,17 @@ When you open AdSilencer for the first time, a setup window shows three steps:
 Each step turns green when it is done. The setup window also opens at launch
 while the permission is missing, and when you open AdSilencer while it runs.
 
-If the window says that macOS does not answer, click Restart Apple Events and
-type your administrator password. If the message stays, restart the Mac. This
-is a known macOS problem.
+## Troubleshooting
+
+The menu always has a Troubleshooting item. This item opens the setup window
+and its Troubleshooting section.
+
+AdSilencer opens the setup window if macOS does not answer for 10 seconds.
+Click Restart Apple Events and type your administrator password. If the
+problem stays, restart the Mac. This is a known macOS problem.
+
+Click Copy Report to copy the app, macOS, and Spotify status. You can paste
+the report into an issue or a message.
 
 ## How it works
 

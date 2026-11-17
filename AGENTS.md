@@ -50,6 +50,13 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
   onboarding button "Restart Apple Events" runs that command with the
   administrator password. Do not retry the check in a loop: each hung call
   holds a thread forever.
+- One hang started when the first permission check ran during the first second
+  of a Spotify start. This is a timing hypothesis from one incident, not a
+  proven cause. The watcher waits for Spotify to finish its launch and become
+  three seconds old. It stops the wait after 30 seconds.
+- Each Apple event makes `tccd` write three log lines, including one error
+  line. At 13 events each second, one measurement found 66,962 error lines in
+  85 minutes. The current design does not reduce the event rate.
 - The `sdp`-generated ScriptingBridge header fails to link in Swift: it declares
   a class nothing defines. The runtime class is `SBScriptableApplication`. Use
   hand-written `@objc` protocols instead.
