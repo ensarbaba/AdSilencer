@@ -36,6 +36,21 @@ struct AppStateTests {
         return done()
     }
 
+    @Test("Repair results name success, cancellation, and failure")
+    func repairOutcomeTable() {
+        let cancelled = [
+            NSAppleScript.errorNumber: NSNumber(value: -128)
+        ] as NSDictionary
+        let failed = [
+            NSAppleScript.errorNumber: NSNumber(value: -1),
+            NSAppleScript.errorMessage: "The service failed."
+        ] as NSDictionary
+
+        #expect(RepairOutcome(error: nil) == .done)
+        #expect(RepairOutcome(error: cancelled) == .cancelled)
+        #expect(RepairOutcome(error: failed) == .failed("The service failed."))
+    }
+
     @Test("Shutdown prevents an in-flight ad read from muting again")
     func shutdownDuringRead() async throws {
         let fake = FakeSpotify()

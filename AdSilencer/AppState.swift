@@ -170,13 +170,18 @@ final class AppState {
     /// asks for an administrator password. After the restart, the waiting check
     /// returns by itself and macOS shows the consent dialog. Runs on the main
     /// thread, which waits while the password dialog shows.
-    func restartAppleEvents() {
+    func restartAppleEvents() -> RepairOutcome {
         let source = """
             do shell script "/usr/bin/killall appleeventsd" \
             with prompt "AdSilencer needs to restart a macOS service that does not answer." \
             with administrator privileges
             """
-        _ = NSAppleScript(source: source)?.executeAndReturnError(nil)
+        guard let script = NSAppleScript(source: source) else {
+            return .failed("AdSilencer could not create the restart command.")
+        }
+        var error: NSDictionary?
+        _ = script.executeAndReturnError(&error)
+        return RepairOutcome(error: error)
     }
 
     func openSpotify() {

@@ -1,0 +1,6 @@
+schemaVersion: 1
+enabledWorkflows:
+  - macos
+sessionDefaults:
+  scheme: AdSilencer
+  projectPath: AdSilencer.xcodeproj
