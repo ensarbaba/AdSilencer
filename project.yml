@@ -40,6 +40,7 @@ targets:
         Debug:
           CODE_SIGN_IDENTITY: "-"
           ENABLE_HARDENED_RUNTIME: NO
+          PRODUCT_BUNDLE_IDENTIFIER: com.ensarbaba.AdSilencer.debug
         # Signed and hardened for release, which notarizing requires.
         Release:
           CODE_SIGN_IDENTITY: "Developer ID Application"
