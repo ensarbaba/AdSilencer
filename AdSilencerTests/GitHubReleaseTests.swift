@@ -44,7 +44,18 @@ struct GitHubReleaseTests {
         #expect(release.url.absoluteString == "https://github.com/ensarbaba/AdSilencer/releases/tag/v2026.10.04")
     }
 
-    private func release(_ tag: String) -> GitHubRelease {
-        GitHubRelease(tag: tag, url: URL(string: "https://github.com")!)
+    @Test("Only HTTPS GitHub pages are trusted")
+    func trustedURLs() {
+        #expect(release("v1", url: "https://github.com/owner/repository").hasTrustedURL)
+        #expect(!release("v1", url: "http://github.com/owner/repository").hasTrustedURL)
+        #expect(!release("v1", url: "https://api.github.com/owner/repository").hasTrustedURL)
+        #expect(!release("v1", url: "https://github.com.example.com/owner/repository").hasTrustedURL)
+    }
+
+    private func release(
+        _ tag: String,
+        url: String = "https://github.com"
+    ) -> GitHubRelease {
+        GitHubRelease(tag: tag, url: URL(string: url)!)
     }
 }

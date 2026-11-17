@@ -27,6 +27,11 @@ struct GitHubRelease: Decodable {
         return try JSONDecoder().decode(GitHubRelease.self, from: data)
     }
 
+    var hasTrustedURL: Bool {
+        url.scheme?.lowercased() == "https"
+            && url.host?.lowercased() == "github.com"
+    }
+
     /// The build number the release workflow gave this tag: `v2026.10.04` is
     /// 2026100401 and `v2026.10.04.2` is 2026100402. Releases of the same day
     /// share a version, so builds are compared instead.

@@ -285,7 +285,10 @@ final class AppState {
         updateCheck = Task { [weak self] in
             while true {
                 let release = try? await GitHubRelease.latest()
-                if let release, let releaseBuild = release.buildNumber, releaseBuild > installedBuild {
+                if let release,
+                   release.hasTrustedURL,
+                   let releaseBuild = release.buildNumber,
+                   releaseBuild > installedBuild {
                     self?.update = release
                 }
                 // Throws when shutdown() cancels the task, which ends the loop.
