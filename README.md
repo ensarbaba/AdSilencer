@@ -16,7 +16,7 @@ When you open AdSilencer for the first time, a setup window shows three steps:
 1. Install Spotify.
 2. Open Spotify.
 3. Allow AdSilencer to control Spotify. macOS asks while the setup window is
-   open. Click OK.
+   open. Click Allow.
 
 Each step turns green when it is done. The setup window also opens at launch
 while the permission is missing, and when you open AdSilencer while it runs.

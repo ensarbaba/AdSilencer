@@ -81,7 +81,7 @@ struct OnboardingView: View {
             case .denied:
                 Button("Open Automation Settings", action: state.openAutomationSettings)
             case .undetermined:
-                Text("Click OK when macOS asks.").foregroundStyle(.secondary)
+                Text("Click Allow when macOS asks.").foregroundStyle(.secondary)
             case .unavailable:
                 Text("Waiting for Spotify.").foregroundStyle(.secondary)
             case .noAnswer:
