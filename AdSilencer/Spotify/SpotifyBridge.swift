@@ -65,6 +65,9 @@ protocol SpotifyControlling: AnyObject, Sendable {
     func requestAccess() -> SpotifyAccess
     func readPlayerState() throws -> SpotifyPlayerState
     func currentTrackID() throws -> String?
+    /// One track read that cannot block the other calls if it hangs. True
+    /// when Spotify answered.
+    func canReadTrack() -> Bool
 }
 
 /// Serializes one ScriptingBridge connection across callers.
@@ -160,12 +163,17 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
             return
         }
         if spotifyConnection == nil {
-            spotifyConnection = SBApplication(bundleIdentifier: Self.bundleID)
-            spotifyConnection?.timeout = Self.eventTimeoutTicks
-            // |= keeps the default bits that wait for Spotify's reply. The added flag
-            // makes events fail instead of prompting; only requestAccess() may prompt.
-            spotifyConnection?.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
+            spotifyConnection = Self.makeConnection()
         }
+    }
+
+    private static func makeConnection() -> SBApplication? {
+        let connection = SBApplication(bundleIdentifier: bundleID)
+        connection?.timeout = eventTimeoutTicks
+        // |= keeps the default bits that wait for Spotify's reply. The added flag
+        // makes events fail instead of prompting; only requestAccess() may prompt.
+        connection?.sendMode |= AESendMode(kAEDoNotPromptForUserConsent)
+        return connection
     }
 
     func readPlayerState() throws -> SpotifyPlayerState {
@@ -206,17 +214,33 @@ final class SpotifyBridge: SpotifyControlling, @unchecked Sendable {
         try spotifyConnectionLock.withLock {
             updateSpotifyConnection()
             guard let spotifyConnection else { throw SpotifyReadError.unavailable }
-            let errors = SpotifyEventErrors()
-            spotifyConnection.delegate = errors
-            defer { spotifyConnection.delegate = nil }
-            // Spotify returns a live object even when nothing is loaded. A missing
-            // or empty id is how that appears.
-            let id = (spotifyConnection as SpotifyScriptingApplication).currentTrack?.id
-            guard !errors.failed else { throw SpotifyReadError.noAnswer }
-            guard let id, id.isNotEmpty
-            else { return nil }
-            return id
+            return try Self.trackID(from: spotifyConnection)
         }
+    }
+
+    /// Uses its own connection and not `spotifyConnectionLock`, so a read that
+    /// hangs cannot block the other reads or a volume restore.
+    func canReadTrack() -> Bool {
+        guard isSpotifyRunning, let connection = Self.makeConnection() else { return false }
+        do {
+            _ = try Self.trackID(from: connection)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func trackID(from connection: SBApplication) throws -> String? {
+        let errors = SpotifyEventErrors()
+        connection.delegate = errors
+        defer { connection.delegate = nil }
+        // Spotify returns a live object even when nothing is loaded. A missing
+        // or empty id is how that appears.
+        let id = (connection as SpotifyScriptingApplication).currentTrack?.id
+        guard !errors.failed else { throw SpotifyReadError.noAnswer }
+        guard let id, id.isNotEmpty
+        else { return nil }
+        return id
     }
 }
 

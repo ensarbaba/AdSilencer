@@ -161,6 +161,8 @@ struct AppStateTests {
     @Test("A missing macOS answer opens setup once and clears after recovery")
     func noAnswerOpensSetup() async throws {
         let fake = FakeSpotify()
+        // Spotify does not answer reads either, so nothing proves the access.
+        fake.trackIDReadFailures = 1_000
         let release = DispatchSemaphore(value: 0)
         fake.onAccessCheck = {
             release.wait()
@@ -182,6 +184,7 @@ struct AppStateTests {
         try await Task.sleep(for: .milliseconds(1_200))
         #expect(!state.isOnboardingRequested)
 
+        fake.trackIDReadFailures = 0
         fake.onAccessCheck = nil
         release.signal()
         #expect(await waitFor(3) {

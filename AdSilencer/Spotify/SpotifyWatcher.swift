@@ -10,6 +10,7 @@
 //
 //  The Automation permission check runs on its own queue with a time limit.
 //  The macOS call can hang forever, and the consent dialog waits for the user.
+//  While it hangs, a track read can still prove the access.
 //
 
 import Foundation
@@ -31,6 +32,8 @@ final class SpotifyWatcher: Sendable {
         var isCheckingPermission = false
         var isAskingForPermission = false
         var isPermissionDialogAllowed = false
+        var isReadingDuringHang = false
+        var lastReadDuringHangWorked: Bool?
         var checkGeneration = 0
         var playerState: SpotifyPlayerState = .stopped
         var playerStateReadFailures = 0
@@ -162,12 +165,54 @@ final class SpotifyWatcher: Sendable {
             }
             _ = answered.wait(timeout: .now() + Self.permissionTimeout)
         }
-        return state.withLock { s in
+        let access = currentAccess()
+        return access == .noAnswer ? readDuringHang() : access
+    }
+
+    private func currentAccess() -> SpotifyAccess {
+        state.withLock { s in
             if s.isAskingForPermission { return .undetermined }
             // A check that waits keeps the last answer. Only a Spotify process
             // without an answer yet reports no answer.
             if s.isCheckingPermission && s.permission == .undetermined { return .noAnswer }
             return s.permission
+        }
+    }
+
+    /// While the permission check hangs, a track read shows whether Spotify
+    /// still answers. A read that works proves the access, because macOS lets
+    /// no Apple event through without it. The read can hang too, so it runs on
+    /// `permissionQueue`, one at a time, with the same time limit.
+    private func readDuringHang() -> SpotifyAccess {
+        let generation = state.withLock { s -> Int? in
+            if s.isReadingDuringHang { return nil }
+            s.isReadingDuringHang = true
+            return s.checkGeneration
+        }
+        if let generation {
+            let answered = DispatchSemaphore(value: 0)
+            permissionQueue.async { [weak self] in
+                self?.runReadDuringHang(generation: generation)
+                answered.signal()
+            }
+            _ = answered.wait(timeout: .now() + Self.permissionTimeout)
+        }
+        return currentAccess()
+    }
+
+    private func runReadDuringHang(generation: Int) {
+        let works = spotify.canReadTrack()
+        let isNewResult = state.withLock { s -> Bool in
+            guard generation == s.checkGeneration else { return false }
+            s.isReadingDuringHang = false
+            if works && s.permission == .undetermined { s.permission = .ok }
+            let isNewResult = s.lastReadDuringHangWorked != works
+            s.lastReadDuringHangWorked = works
+            return isNewResult
+        }
+        // Shows in the field whether Spotify answers while the check hangs.
+        if isNewResult {
+            Log.spotify.info("permission check hangs, track read works=\(works, privacy: .public)")
         }
     }
 
@@ -198,6 +243,8 @@ final class SpotifyWatcher: Sendable {
             $0.permission = .undetermined
             $0.isCheckingPermission = false
             $0.isAskingForPermission = false
+            $0.isReadingDuringHang = false
+            $0.lastReadDuringHangWorked = nil
             $0.playerState = .stopped
             $0.playerStateReadFailures = 0
             $0.trackID = nil

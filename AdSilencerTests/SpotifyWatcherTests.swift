@@ -421,6 +421,8 @@ struct SpotifyWatcherPermissionTests {
     func hungCheckKeepsReporting() async throws {
         let fake = FakeSpotify()
         fake.track = .song()
+        // Spotify does not answer reads either, so nothing proves the access.
+        fake.trackIDReadFailures = 1_000
         let release = DispatchSemaphore(value: 0)
         fake.onAccessCheck = {
             release.wait()
@@ -436,8 +438,9 @@ struct SpotifyWatcherPermissionTests {
 
         watcher.start()
         #expect(await recorder.waitFor { $0 == .waiting(.noAnswer) })
-        #expect(fake.trackIDReads == 0)
+        #expect(fake.playerStateReads == 0)
 
+        fake.trackIDReadFailures = 0
         fake.onAccessCheck = nil
         release.signal()
         #expect(await recorder.waitFor { $0.access == .ok && $0.trackID == .song() })
@@ -472,10 +475,92 @@ struct SpotifyWatcherPermissionTests {
         #expect(recorder.all.last?.isAdPlaying == true)
     }
 
+    @Test("A hung check reports the ad when Spotify still answers reads")
+    func hungCheckWithWorkingReadsReportsAd() async throws {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        let release = DispatchSemaphore(value: 0)
+        fake.onAccessCheck = {
+            release.wait()
+            return nil
+        }
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer {
+            watcher.stop()
+            fake.onAccessCheck = nil
+            release.signal()
+        }
+
+        watcher.start()
+        #expect(await recorder.waitFor { $0.access == .ok && $0.isAdPlaying })
+        #expect(recorder.all.contains { $0.access == .noAnswer } == false)
+        #expect(fake.accessChecks == 1)
+    }
+
+    @Test("A hung check reports no answer when Spotify reads fail too")
+    func hungCheckWithFailingReadsReportsNoAnswer() async throws {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        fake.trackIDReadFailures = 1_000
+        let release = DispatchSemaphore(value: 0)
+        fake.onAccessCheck = {
+            release.wait()
+            return nil
+        }
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer {
+            watcher.stop()
+            fake.onAccessCheck = nil
+            release.signal()
+        }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0 == .waiting(.noAnswer) })
+        try await Task.sleep(for: .milliseconds(1_500))
+        #expect(recorder.all.contains { $0.access == .ok } == false)
+        #expect(fake.trackIDReads > 0)
+        #expect(fake.playerStateReads == 0)
+    }
+
+    @Test("A read that hangs during a hung check is not started again")
+    func hungReadIsNotRepeated() async throws {
+        let fake = FakeSpotify()
+        fake.track = .ad()
+        let release = DispatchSemaphore(value: 0)
+        let readStarts = Mutex(0)
+        fake.onAccessCheck = {
+            release.wait()
+            return nil
+        }
+        fake.beforeTrackIDRead = {
+            readStarts.withLock { $0 += 1 }
+            release.wait()
+        }
+        let recorder = Recorder()
+        let watcher = SpotifyWatcher(spotify: fake) { recorder.record($0) }
+        defer {
+            watcher.stop()
+            fake.onAccessCheck = nil
+            fake.beforeTrackIDRead = nil
+            release.signal()
+            release.signal()
+        }
+
+        watcher.start()
+        try #require(await recorder.waitFor { $0 == .waiting(.noAnswer) })
+        // Longer than two status reads, each with two 1 s time limits.
+        try await Task.sleep(for: .milliseconds(4_500))
+        #expect(readStarts.withLock { $0 } == 1)
+        #expect(recorder.all.last == .waiting(.noAnswer))
+    }
+
     @Test("An answer from a closed Spotify does not change the new process")
     func stalePermissionAnswerIsIgnored() async throws {
         let fake = FakeSpotify()
         fake.track = .song()
+        fake.trackIDReadFailures = 1_000
         let release = DispatchSemaphore(value: 0)
         fake.onAccessCheck = {
             release.wait()
@@ -495,6 +580,7 @@ struct SpotifyWatcherPermissionTests {
         watcher.refresh()
         try #require(await recorder.waitFor { $0 == .idle })
 
+        fake.trackIDReadFailures = 0
         fake.onAccessCheck = nil
         fake.isSpotifyRunning = true
         watcher.refresh()

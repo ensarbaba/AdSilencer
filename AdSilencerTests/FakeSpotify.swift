@@ -189,4 +189,14 @@ final class FakeSpotify: SpotifyControlling {
             return $0.track
         }
     }
+
+    /// Counts as a track read, so the read hook and read failures apply.
+    func canReadTrack() -> Bool {
+        do {
+            _ = try currentTrackID()
+            return true
+        } catch {
+            return false
+        }
+    }
 }
