@@ -179,6 +179,7 @@ struct AppStateTests {
         try #require(await waitFor(4) {
             state.isSpotifyUnreachable && state.isOnboardingRequested
         })
+        #expect(state.isTroubleshootingRequested)
 
         state.isOnboardingRequested = false
         try await Task.sleep(for: .milliseconds(1_200))

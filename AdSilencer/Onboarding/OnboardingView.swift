@@ -15,7 +15,6 @@ struct OnboardingView: View {
 
     @Bindable var state: AppState
     @Environment(\.dismissWindow) private var dismissWindow
-    @State private var repairResult: String?
 
     private var isWorking: Bool {
         state.isSpotifyInstalled && state.playback.isSpotifyRunning && state.playback.access == .ok
@@ -102,16 +101,12 @@ struct OnboardingView: View {
         }
     }
 
+    /// The repair button is in the Troubleshooting section, which opens by
+    /// itself when Spotify stays unreachable.
     @ViewBuilder
     private func unreachableHelp(_ problem: String) -> some View {
         Text(problem).foregroundStyle(.secondary)
-        Text("Restart Apple Events and type your password. If the problem stays, restart your Mac.")
+        Text("Click Restart Apple Events below and type your password. If the problem stays, restart your Mac.")
             .foregroundStyle(.secondary)
-        Button("Restart Apple Events") {
-            repairResult = state.restartAppleEvents().message
-        }
-        if let repairResult {
-            Text(repairResult).foregroundStyle(.secondary)
-        }
     }
 }

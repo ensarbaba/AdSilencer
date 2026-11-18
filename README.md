@@ -26,9 +26,10 @@ while the permission is missing, and when you open AdSilencer while it runs.
 The menu always has a Troubleshooting item. This item opens the setup window
 and its Troubleshooting section.
 
-AdSilencer opens the setup window if macOS does not answer for 10 seconds.
-Click Restart Apple Events and type your administrator password. If the
-problem stays, restart the Mac. This is a known macOS problem.
+AdSilencer opens the setup window and its Troubleshooting section if macOS
+does not answer for 10 seconds. Click Restart Apple Events and type your
+administrator password. If the problem stays, restart the Mac. This is a
+known macOS problem.
 
 Click Copy Report to copy the app, macOS, and Spotify status. You can paste
 the report into an issue or a message.

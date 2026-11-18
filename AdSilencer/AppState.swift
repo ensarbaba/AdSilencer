@@ -271,6 +271,8 @@ final class AppState {
         else { return }
 
         isSpotifyUnreachable = true
+        // The repair button is in the Troubleshooting section.
+        isTroubleshootingRequested = true
         isOnboardingRequested = true
     }
 
