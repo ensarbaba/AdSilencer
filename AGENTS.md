@@ -51,9 +51,12 @@ Verified against Spotify 1.2.95.453. Each was expensive to establish.
   administrator password. Do not retry the check in a loop: each hung call
   holds a thread forever.
 - One hang started when the first permission check ran during the first second
-  of a Spotify start. This is a timing hypothesis from one incident, not a
-  proven cause. The watcher waits for Spotify to finish its launch and become
-  three seconds old. It stops the wait after 30 seconds.
+  of a Spotify start. So the watcher waits for Spotify to finish its launch and
+  become three seconds old. It stops the wait after 30 seconds. The wait is a
+  precaution and not a fix. With the wait active, a later check started about
+  four seconds after a Spotify start and hung (macOS 27.0.1, Spotify
+  1.3.6.1921). Quick Spotify restarts reproduced the hang once in 20 tries, so
+  a run without a hang proves nothing about the wait.
 - Each Apple event makes `tccd` write three log lines, including one error
   line. At 13 events each second, one measurement found 66,962 error lines in
   85 minutes. The current design does not reduce the event rate.
